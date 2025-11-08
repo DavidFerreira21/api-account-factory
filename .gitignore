@@ -1,0 +1,35 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments and local tools
+.venv/
+venv/
+.python-version
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+
+# Terraform artifacts
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfstate
+terraform.tfstate.*
+.terraform.lock.hcl
+
+# Local binaries / tools
+/.ruff_cache/
+/.mypy_cache/
+/.pytest_cache/
+
+# Pip / Python metadata
+.pytest_cache/
+.coverage
+coverage.xml
+
+# Scripts / outputs
+test_awscurl.sh.log
