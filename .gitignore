@@ -7,6 +7,7 @@ __pycache__/
 .venv/
 venv/
 .python-version
+.vscode/
 
 # OS / editor noise
 .DS_Store
