@@ -14,8 +14,8 @@ variable "api_gateway_vpc_subnet_ids" {
   default     = []
 }
 
-variable "api_gateway_vpc_sg_ids" {
-  description = "Security groups associados ao endpoint privado do API Gateway"
+variable "api_gateway_vpc_allowed_cidrs" {
+  description = "Lista de CIDRs permitidos para acessar o endpoint privado do API Gateway (porta 443)"
   type        = list(string)
   default     = []
 }

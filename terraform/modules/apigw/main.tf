@@ -1,9 +1,28 @@
-locals {
-  is_private_api = var.vpc_id != ""
-  endpoint_types = local.is_private_api ? ["PRIVATE"] : [var.endpoint_type]
-}
 
-data "aws_caller_identity" "current" {}
+
+resource "aws_security_group" "apigw_endpoint" {
+  count = local.is_private_api ? 1 : 0
+
+  name   = "${var.name_prefix}-apigw-endpoint-sg"
+  vpc_id = var.vpc_id
+  tags   = var.tags
+
+  ingress {
+    description = "Allow HTTPS from allowed CIDRs"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = var.vpc_allowed_cidrs
+  }
+
+  egress {
+    description = "Allow all outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
 
 resource "aws_vpc_endpoint" "execute_api" {
   count               = local.is_private_api ? 1 : 0
@@ -11,8 +30,9 @@ resource "aws_vpc_endpoint" "execute_api" {
   service_name        = "com.amazonaws.${var.region}.execute-api"
   vpc_endpoint_type   = "Interface"
   subnet_ids          = var.vpc_subnet_ids
-  security_group_ids  = length(var.vpc_endpoint_security_group_ids) > 0 ? var.vpc_endpoint_security_group_ids : null
+  security_group_ids  = aws_security_group.apigw_endpoint[*].id
   private_dns_enabled = false
+  tags                = var.tags
 }
 
 resource "aws_iam_role" "api_gw_logs_role" {
@@ -53,13 +73,14 @@ resource "aws_iam_role_policy" "api_gw_logs_policy" {
 resource "aws_iam_role_policy_attachment" "api_gw_logs_managed_policy" {
   role       = aws_iam_role.api_gw_logs_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+  tags = var.tags
 }
 
 resource "aws_api_gateway_rest_api" "this" {
   name = "${var.name_prefix}-api-gateway"
   body = templatefile(var.openapi_template_path, {
     region     = var.region
-    account_id = data.aws_caller_identity.current.account_id
+    account_id = local.account_id
     name       = var.lambda_function_name
   })
 
@@ -67,6 +88,7 @@ resource "aws_api_gateway_rest_api" "this" {
     types            = local.endpoint_types
     vpc_endpoint_ids = local.is_private_api ? [aws_vpc_endpoint.execute_api[0].id] : null
   }
+  tags = var.tags
 }
 
 resource "aws_api_gateway_rest_api_policy" "private_policy" {
@@ -79,7 +101,7 @@ resource "aws_api_gateway_rest_api_policy" "private_policy" {
         Effect    = "Allow",
         Principal = "*",
         Action    = "execute-api:Invoke",
-        Resource  = "arn:aws:execute-api:${var.region}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.this.id}/*",
+        Resource  = "arn:aws:execute-api:${var.region}:${local.account_id}:${aws_api_gateway_rest_api.this.id}/*",
         Condition = {
           StringEquals = {
             "aws:SourceVpce" = aws_vpc_endpoint.execute_api[0].id
@@ -95,7 +117,7 @@ resource "aws_lambda_permission" "api_gateway" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "arn:aws:execute-api:${var.region}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.this.id}/*/*"
+  source_arn    = "arn:aws:execute-api:${var.region}:${local.account_id}:${aws_api_gateway_rest_api.this.id}/*/*"
 }
 
 resource "aws_api_gateway_deployment" "this" {
@@ -106,6 +128,7 @@ resource "aws_api_gateway_deployment" "this" {
 resource "aws_cloudwatch_log_group" "api_gw_logs" {
   name              = "/aws/apigateway/${var.name_prefix}-api-gateway-logs"
   retention_in_days = var.log_retention_days
+  tags              = var.tags
 }
 
 resource "aws_api_gateway_account" "account_settings" {

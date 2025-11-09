@@ -2,6 +2,7 @@
 resource "aws_iam_role" "lambda_provisioning_role" {
   name               = "${local.prefix}-provisioning-lambda-role"
   assume_role_policy = local.lambda_assume_role
+  tags               = local.default_tags
 }
 
 resource "aws_iam_role_policy" "lambda_provisioning_policy" {
@@ -67,6 +68,7 @@ resource "aws_iam_role_policy" "lambda_provisioning_policy" {
 resource "aws_iam_role" "lambda_validation_role" {
   name               = "${local.prefix}-validation-lambda-role"
   assume_role_policy = local.lambda_assume_role
+  tags               = local.default_tags
 }
 
 resource "aws_iam_role_policy" "lambda_validation_policy" {
@@ -111,6 +113,7 @@ resource "aws_iam_role_policy" "lambda_validation_policy" {
 resource "aws_iam_role" "lambda_ddb_sfn_role" {
   name               = "${local.prefix}-ddb-sfn-lambda-role"
   assume_role_policy = local.lambda_assume_role
+  tags               = local.default_tags
 }
 
 resource "aws_iam_role_policy" "lambda_ddb_sfn_policy" {
@@ -172,6 +175,7 @@ resource "aws_iam_role" "servicecatalog_launch_role" {
       }
     ]
   })
+  tags = local.default_tags
 }
 
 resource "aws_iam_role_policy" "servicecatalog_launch_policy" {
@@ -261,6 +265,7 @@ resource "aws_lambda_function" "validate" {
   runtime          = "python3.11"
   filename         = data.archive_file.validate_zip.output_path
   source_code_hash = data.archive_file.validate_zip.output_base64sha256
+  tags             = local.default_tags
 }
 
 # Função ProvisionAccount
@@ -284,6 +289,7 @@ resource "aws_lambda_function" "provision_account" {
       PRINCIPAL_ARN = aws_iam_role.servicecatalog_launch_role.arn
     }
   }
+  tags = local.default_tags
 }
 
 # Função CheckAccountStatus
@@ -300,6 +306,7 @@ resource "aws_lambda_function" "check_status" {
   runtime          = "python3.11"
   filename         = data.archive_file.checkstatus_zip.output_path
   source_code_hash = data.archive_file.checkstatus_zip.output_base64sha256
+  tags             = local.default_tags
 }
 
 # Função UpdateStatus
@@ -321,6 +328,7 @@ resource "aws_lambda_function" "update_status" {
       DYNAMO_TABLE = aws_dynamodb_table.accounts.name
     }
   }
+  tags = local.default_tags
 }
 
 data "archive_file" "update_failed_zip" {
@@ -341,6 +349,7 @@ resource "aws_lambda_function" "update_failed_status" {
       DYNAMO_TABLE = aws_dynamodb_table.accounts.name
     }
   }
+  tags = local.default_tags
 }
 
 
@@ -363,6 +372,7 @@ resource "aws_lambda_function" "trigger_lambda" {
       SFN_ARN = aws_sfn_state_machine.create_account_sfn.arn
     }
   }
+  tags = local.default_tags
 }
 
 
@@ -381,6 +391,7 @@ data "aws_iam_policy_document" "sfn_assume_role" {
 resource "aws_iam_role" "sfn_role" {
   name               = "StepFunctionRole"
   assume_role_policy = data.aws_iam_policy_document.sfn_assume_role.json
+  tags               = local.default_tags
 }
 
 resource "aws_iam_role_policy" "sfn_policy" {
@@ -409,6 +420,7 @@ resource "aws_iam_role_policy" "sfn_policy" {
 resource "aws_sfn_state_machine" "create_account_sfn" {
   name     = "CreateAccountStateMachine"
   role_arn = aws_iam_role.sfn_role.arn
+  tags     = local.default_tags
 
   definition = templatefile("${path.module}/sfn_definition.json.tpl", {
     validate_lambda       = aws_lambda_function.validate.arn

@@ -7,7 +7,7 @@ __pycache__/
 .venv/
 venv/
 .python-version
-.vscode/
+
 
 # OS / editor noise
 .DS_Store
@@ -26,6 +26,7 @@ terraform.tfstate.*
 /.ruff_cache/
 /.mypy_cache/
 /.pytest_cache/
+.vscode/
 
 # Pip / Python metadata
 .pytest_cache/

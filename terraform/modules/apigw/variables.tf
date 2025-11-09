@@ -14,11 +14,6 @@ variable "lambda_function_name" {
   type        = string
 }
 
-variable "lambda_function_arn" {
-  description = "ARN da função Lambda para o aws_lambda_permission"
-  type        = string
-}
-
 variable "region" {
   description = "Região AWS"
   type        = string
@@ -53,8 +48,18 @@ variable "vpc_subnet_ids" {
   default     = []
 }
 
-variable "vpc_endpoint_security_group_ids" {
-  description = "Security Groups aplicados ao endpoint privado"
+variable "vpc_allowed_cidrs" {
+  description = "CIDRs autorizados a acessar o endpoint privado na porta 443"
   type        = list(string)
-  default     = []
+  default     = ["0.0.0.0/0"]
+  validation {
+    condition     = var.vpc_id == "" || length(var.vpc_allowed_cidrs) > 0
+    error_message = "Defina ao menos um CIDR em vpc_allowed_cidrs quando vpc_id estiver configurado."
+  }
+}
+
+variable "tags" {
+  description = "Tags aplicadas aos recursos do módulo"
+  type        = map(string)
+  default     = {}
 }

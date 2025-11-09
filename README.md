@@ -12,7 +12,7 @@ Arquivos importantes
 - `lambda_src/api/lambda_function.py` — handler principal da API (GET/POST)
 - `lambda_src/accounts/*.py` — lambdas que compõem o Step Function e processos auxiliares
 - `terraform/main-api.tf`, `terraform/main-sfn.tf`, `terraform/providers.tf`, `terraform/data.tf` — infraestrutura Terraform
-- `terraform/modules/apigw` — módulo reutilizável do API Gateway (permite escolher endpoint público ou privado com VPC Endpoint Interface)
+- Tags padrão: `Solution = https://github.com/DavidFerreira21/api-account-factory`
 
 Variáveis de ambiente relevantes
 - `DYNAMO_TABLE` — nome da tabela DynamoDB (padrão: `AccountsTable`)
@@ -34,7 +34,7 @@ Como rodar localmente (rápido)
 }
 ```
 
-3. Terraform: para criar infra use os arquivos em `terraform/`. O módulo `modules/apigw` já permite definir um endpoint privado informando `api_gateway_vpc_id`, `api_gateway_vpc_subnet_ids` e `api_gateway_vpc_sg_ids`. Exemplo básico:
+3. Terraform: para criar infra use os arquivos `*.tf`. Exemplo básico:
 
 ```bash
 make tf-plan   # terraform init + plan
@@ -49,7 +49,7 @@ Pontos de atenção e boas práticas
 
 Sugestões de melhorias futuras (priorizadas)
 1. Adicionar um `README` por pasta funcional (`lambda_src/accounts/README.md`) com exemplos de eventos e testes unitários.
-2. Adicionar testes unitários adicionais (pytest) para `lambda_src/api/lambda_function.py` — validar parsing de payload e respostas HTTP.
+2. Adicionar testes unitários minimalistas (pytest) para `lambda_src/api/lambda_function.py` — validar parsing de payload e respostas HTTP.
 3. Documentar processo de deploy (como atualizar o `lambda.zip` no Terraform e fatores de idempotência).
 
 Onde procurar
@@ -60,33 +60,6 @@ Se quiser, eu já posso:
 - Gerar tests `pytest` básicos para a Lambda API (happy path + 1 erro de validação).
 - Adicionar README detalhado dentro de `lambda_src/api` com exemplos de eventos e comandos de teste.
 
-## Lint, testes e automações
-1. Instale dependências de desenvolvimento:
-   ```bash
-   python3 -m pip install --user --break-system-packages -r requirements-dev.txt
-   ```
-2. Execute lint (Ruff + Black) e testes com um único comando:
-   ```bash
-   make test
-   ```
-   Este alvo executa `scripts/lint.sh` e, em seguida, `python3 -m pytest`.
-3. Para rodar apenas o lint manualmente:
-   ```bash
-   bash scripts/lint.sh
-   ```
+---
 
-## Estrutura Terraform
-- `terraform/main-api.tf` — DynamoDB, Lambda HTTP e chamada do módulo de API Gateway.
-- `terraform/main-sfn.tf` — IAM roles segmentadas, Funções da Step Function e o próprio workflow.
-- `terraform/modules/apigw` — módulo parametrizável para API Gateway + CloudWatch Logs; use as variáveis:
-  - `api_gateway_vpc_id`, `api_gateway_vpc_subnet_ids`, `api_gateway_vpc_sg_ids` para publicar um endpoint privado (com `aws_vpc_endpoint`).
-  - `endpoint_type` para trocar entre `REGIONAL`/`EDGE` quando não houver VPC.
-  - `log_retention_days`, `stage_name` para customizar retenção e stage do gateway.
-  
-Exemplo de uso com VPC privada:
-```hcl
-api_gateway_vpc_id            = "vpc-123456"
-api_gateway_vpc_subnet_ids    = ["subnet-aaa", "subnet-bbb"]
-api_gateway_vpc_sg_ids        = ["sg-xyz"]
-endpoint_type                 = "PRIVATE"
-```
+Resumo da ação: criei este README geral para fornecer visão rápida do projeto e próximos passos. Se aprovar, adiciono testes e READMEs mais detalhados por pacote.

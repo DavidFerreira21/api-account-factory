@@ -3,6 +3,7 @@ resource "aws_dynamodb_table" "accounts" {
   name         = "${local.prefix}-ddb-accounts"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "AccountEmail"
+  tags         = local.default_tags
 
   attribute {
     name = "AccountEmail"
@@ -53,6 +54,7 @@ resource "aws_lambda_function" "accounts_api" {
   runtime          = "python3.11"
   filename         = data.archive_file.lambda_api.output_path
   source_code_hash = data.archive_file.lambda_api.output_base64sha256
+  tags             = local.default_tags
 }
 
 
@@ -63,12 +65,12 @@ module "accounts_api_gateway" {
   name_prefix             = local.prefix
   stage_name              = "prod"
   lambda_function_name    = aws_lambda_function.accounts_api.function_name
-  lambda_function_arn     = aws_lambda_function.accounts_api.arn
   region                  = var.aws_region
   openapi_template_path   = "${path.module}/accounts-api.yaml.tpl"
   log_retention_days      = 30
   endpoint_type           = "REGIONAL"
   vpc_id                  = var.api_gateway_vpc_id
   vpc_subnet_ids          = var.api_gateway_vpc_subnet_ids
-  vpc_endpoint_security_group_ids = var.api_gateway_vpc_sg_ids
+  vpc_allowed_cidrs       = var.api_gateway_vpc_allowed_cidrs
+  tags                    = local.default_tags
 }

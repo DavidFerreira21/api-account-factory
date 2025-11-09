@@ -7,6 +7,9 @@ locals {
 
   lambda_src_path = abspath("${path.module}/../lambda_src")
 
+  default_tags = {
+    Solution = "https://github.com/DavidFerreira21/api-account-factory"
+  }
 
   lambda_assume_role = jsonencode({
     Version = "2012-10-17"
@@ -24,6 +27,5 @@ locals {
 }
 
 data "aws_caller_identity" "current" {}
-
 
 
