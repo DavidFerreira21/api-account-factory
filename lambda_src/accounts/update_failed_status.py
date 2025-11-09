@@ -8,7 +8,9 @@ LOGGER = logging.getLogger()
 LOGGER.setLevel(logging.INFO)
 
 DYNO = boto3.client("dynamodb")
-DYNAMO_TABLE = os.environ.get("DYNAMO_TABLE", "AccountsTable")
+DYNAMO_TABLE = os.environ.get("DYNAMO_TABLE")
+if not DYNAMO_TABLE:
+    raise RuntimeError("Missing required environment variable DYNAMO_TABLE")
 
 
 def lambda_handler(event, context):

@@ -15,7 +15,7 @@ Arquivos importantes
 - Tags padrão: `Solution = https://github.com/DavidFerreira21/api-account-factory`
 
 Variáveis de ambiente relevantes
-- `DYNAMO_TABLE` — nome da tabela DynamoDB (padrão: `AccountsTable`)
+- `DYNAMO_TABLE` — nome da tabela DynamoDB (obrigatório; defina via Terraform/infra)
 - Permissões necessárias (IAM): DynamoDB read/write, Organizations (list roots / OUs), StepFunctions/ServiceCatalog (se provisionamento direto), SQS/SES conforme configuração.
 
 Como rodar localmente (rápido)

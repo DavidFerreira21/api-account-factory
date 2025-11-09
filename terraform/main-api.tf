@@ -55,6 +55,12 @@ resource "aws_lambda_function" "accounts_api" {
   filename         = data.archive_file.lambda_api.output_path
   source_code_hash = data.archive_file.lambda_api.output_base64sha256
   tags             = local.default_tags
+
+  environment {
+    variables = {
+      DYNAMO_TABLE = aws_dynamodb_table.accounts.name
+    }
+  }
 }
 
 

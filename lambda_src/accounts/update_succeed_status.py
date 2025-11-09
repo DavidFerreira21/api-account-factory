@@ -9,7 +9,9 @@ LOGGER.setLevel(logging.INFO)
 sevicecatalog_client = boto3.client("servicecatalog")
 dynamo_client = boto3.client("dynamodb")
 # padroniza variável de ambiente para o nome da tabela
-DYNAMO_TABLE = os.environ.get("DYNAMO_TABLE", "AccountsTable")
+DYNAMO_TABLE = os.environ.get("DYNAMO_TABLE")
+if not DYNAMO_TABLE:
+    raise RuntimeError("Missing required environment variable DYNAMO_TABLE")
 
 
 def get_account_id(servicecatalog_client, pp_id):

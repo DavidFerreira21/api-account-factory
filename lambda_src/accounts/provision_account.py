@@ -13,7 +13,9 @@ LOGGER.setLevel(logging.INFO)
 dynamo_client = boto3.client("dynamodb")
 SC = boto3.client("servicecatalog")
 # padroniza variável de ambiente
-DYNAMO_TABLE = os.environ.get("DYNAMO_TABLE", "AccountsTable")
+DYNAMO_TABLE = os.environ.get("DYNAMO_TABLE")
+if not DYNAMO_TABLE:
+    raise RuntimeError("Missing required environment variable DYNAMO_TABLE")
 PRINCIPAL_ARN = os.environ.get("PRINCIPAL_ARN")
 SLEEP = 10
 

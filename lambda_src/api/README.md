@@ -26,7 +26,7 @@ Resposta e códigos HTTP
 - 500 — erro interno
 
 Variáveis de ambiente
-- `DYNAMO_TABLE` (opcional, default `AccountsTable`)
+- `DYNAMO_TABLE` (obrigatório; informe o nome da tabela DynamoDB)
 
 Testando localmente (exemplos)
 - Executar a função localmente com um script Python que importe o handler e passe um evento simulado.

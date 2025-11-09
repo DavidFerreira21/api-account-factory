@@ -15,7 +15,9 @@ logger.setLevel(logging.INFO)
 dynamodb = boto3.resource("dynamodb")
 org_client = boto3.client("organizations")
 
-TABLE_NAME = os.environ.get("DYNAMO_TABLE", "AccountsTable")
+TABLE_NAME = os.environ.get("DYNAMO_TABLE")
+if not TABLE_NAME:
+    raise RuntimeError("Missing required environment variable DYNAMO_TABLE")
 table = dynamodb.Table(TABLE_NAME)
 
 

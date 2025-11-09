@@ -266,6 +266,12 @@ resource "aws_lambda_function" "validate" {
   filename         = data.archive_file.validate_zip.output_path
   source_code_hash = data.archive_file.validate_zip.output_base64sha256
   tags             = local.default_tags
+
+  environment {
+    variables = {
+      DYNAMO_TABLE = aws_dynamodb_table.accounts.name
+    }
+  }
 }
 
 # Função ProvisionAccount
