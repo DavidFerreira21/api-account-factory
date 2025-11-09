@@ -40,26 +40,3 @@ Como rodar localmente (rápido)
 make tf-plan   # terraform init + plan
 make tf-apply  # terraform apply
 ```
-
-Pontos de atenção e boas práticas
-- O Lambda usa a variável de ambiente `DYNAMO_TABLE` para o nome da tabela. Padronize seus scripts e Terraform para usar `DYNAMO_TABLE`.
-- O código lowercases emails e nomes chave para facilitar buscas e evitar duplicidade por case.
-- DynamoDB writes usam ConditionExpression para evitar sobrescrever contas existentes.
-- A validação de OU faz chamadas à Organizations e depende de haver ao menos um root.
-
-Sugestões de melhorias futuras (priorizadas)
-1. Adicionar um `README` por pasta funcional (`lambda_src/accounts/README.md`) com exemplos de eventos e testes unitários.
-2. Adicionar testes unitários minimalistas (pytest) para `lambda_src/api/lambda_function.py` — validar parsing de payload e respostas HTTP.
-3. Documentar processo de deploy (como atualizar o `lambda.zip` no Terraform e fatores de idempotência).
-
-Onde procurar
-- Fluentemente leia `API.md` para diagramas e fluxo completo.
-- `/.github/copilot-instructions.md` contém anotações de arquitetura e convenções (útil para colaboradores).
-
-Se quiser, eu já posso:
-- Gerar tests `pytest` básicos para a Lambda API (happy path + 1 erro de validação).
-- Adicionar README detalhado dentro de `lambda_src/api` com exemplos de eventos e comandos de teste.
-
----
-
-Resumo da ação: criei este README geral para fornecer visão rápida do projeto e próximos passos. Se aprovar, adiciono testes e READMEs mais detalhados por pacote.
