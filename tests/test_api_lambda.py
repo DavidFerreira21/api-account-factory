@@ -136,6 +136,8 @@ def test_post_success_persists_item(monkeypatch, stub_table):
     monkeypatch.setattr(api, "validate_account_name", lambda _: True)
     monkeypatch.setattr(api, "validate_org_unit", lambda _: True)
 
+    monkeypatch.setattr(api, "has_available_capacity", lambda: True)
+
     event = {"httpMethod": "POST", "body": json.dumps(payload)}
     response = api.lambda_handler(event, None)
 
@@ -145,3 +147,23 @@ def test_post_success_persists_item(monkeypatch, stub_table):
     assert stub_table.last_put is not None
     assert stub_table.last_put["Status"] == "Requested"
     assert stub_table.last_put["Tags"] == payload["Tags"]
+
+
+def test_post_returns_429_when_sfn_is_full(monkeypatch):
+    payload = {
+        "AccountEmail": "wait@example.com",
+        "AccountName": "wait-account",
+        "OrgUnit": "Engineering",
+        "SSOUserEmail": "owner@example.com",
+        "SSOUserFirstName": "Jane",
+        "SSOUserLastName": "Doe",
+    }
+    monkeypatch.setattr(api, "validate_account_name", lambda _: True)
+    monkeypatch.setattr(api, "validate_org_unit", lambda _: True)
+    monkeypatch.setattr(api, "has_available_capacity", lambda: False)
+
+    event = {"httpMethod": "POST", "body": json.dumps(payload)}
+    response = api.lambda_handler(event, None)
+
+    assert response["statusCode"] == 429
+    assert "Too many requests" in response["body"]

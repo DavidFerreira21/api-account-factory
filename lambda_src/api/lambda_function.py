@@ -12,6 +12,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 # AWS Clients
+sfn_client = boto3.client("stepfunctions")
 dynamodb = boto3.resource("dynamodb")
 org_client = boto3.client("organizations")
 
@@ -19,11 +20,37 @@ TABLE_NAME = os.environ.get("DYNAMO_TABLE", "accfactory-ddb-accounts")
 if not TABLE_NAME:
     raise RuntimeError("Missing required environment variable DYNAMO_TABLE")
 table = dynamodb.Table(TABLE_NAME)
+SFN_ARN = os.environ.get("SFN_ARN")
+SFN_MAX_CONCURRENT = int(os.environ.get("SFN_MAX_CONCURRENT", "5"))
 
 
 def format_name(name):
     """Formata nomes com capitalização"""
     return " ".join([part.capitalize() for part in name.strip().split()])
+
+
+def has_available_capacity():
+    if not SFN_ARN:
+        return True
+    try:
+        running = 0
+        next_token = None
+        while True:
+            params = {
+                "stateMachineArn": SFN_ARN,
+                "statusFilter": "RUNNING",
+            }
+            if next_token:
+                params["nextToken"] = next_token
+            response = sfn_client.list_executions(**params)
+            running += len(response.get("executions", []))
+            if running >= SFN_MAX_CONCURRENT or "nextToken" not in response:
+                break
+            next_token = response["nextToken"]
+        return running < SFN_MAX_CONCURRENT
+    except Exception as exc:
+        logger.error(f"Erro ao verificar execuções do Step Function: {exc}")
+        return True
 
 
 def lambda_handler(event, context):
@@ -44,6 +71,11 @@ def lambda_handler(event, context):
             return {
                 "statusCode": 400,
                 "body": json.dumps({"error": "Invalid JSON format"}),
+            }
+        if not has_available_capacity():
+            return {
+                "statusCode": 429,
+                "body": json.dumps({"error": "Too many requests in progress"}),
             }
 
         # Valida campos obrigatórios

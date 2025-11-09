@@ -10,7 +10,12 @@ test: lint
 
 tf-plan:
 	terraform -chdir=$(TF_DIR) init
+	terraform -chdir=$(TF_DIR) fmt -recursive
 	terraform -chdir=$(TF_DIR) plan
+
 
 tf-apply:
 	terraform -chdir=$(TF_DIR) apply
+
+tf-destroy:
+	terraform -chdir=$(TF_DIR) destroy

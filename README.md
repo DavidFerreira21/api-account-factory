@@ -22,6 +22,8 @@ API Gateway + Lambda que registra solicitações de contas AWS, valida dados e a
 - Python 3.11+ e Make (para rodar `make test`, `make tf-plan`, etc.).
 - Variáveis obrigatórias:
   - `DYNAMO_TABLE` — nome exato da tabela; definido pelo Terraform para todos os Lambdas.
+  - `SFN_ARN` — ARN da State Machine usada pelo fluxo (API usa para checar disponibilidade).
+  - `SFN_MAX_CONCURRENT` — limite de execuções concorrentes aceitas antes de retornar 429 (default `5`).
 
 ## Desenvolvimento
 1. Instale dependências locais: `python3 -m pip install -r requirements-dev.txt`.

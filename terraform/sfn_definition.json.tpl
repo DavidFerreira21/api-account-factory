@@ -83,7 +83,7 @@
       "Type": "Choice",
       "Choices": [
         {
-          "Variable": "$.success",
+          "Variable": "$.Success",
           "StringEquals": "True",
           "Next": "Success"
         }

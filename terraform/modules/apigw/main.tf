@@ -31,12 +31,12 @@ resource "aws_vpc_endpoint" "execute_api" {
   vpc_endpoint_type   = "Interface"
   subnet_ids          = var.vpc_subnet_ids
   security_group_ids  = aws_security_group.apigw_endpoint[*].id
-  private_dns_enabled = false
+  private_dns_enabled = true
   tags                = var.tags
 }
 
 resource "aws_iam_role" "api_gw_logs_role" {
-  name               = "${var.name_prefix}-api-logs-role"
+  name = "${var.name_prefix}-api-logs-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
@@ -120,7 +120,7 @@ resource "aws_lambda_permission" "api_gateway" {
 }
 
 resource "aws_api_gateway_deployment" "this" {
-  depends_on = [aws_lambda_permission.api_gateway]
+  depends_on  = [aws_lambda_permission.api_gateway]
   rest_api_id = aws_api_gateway_rest_api.this.id
 }
 

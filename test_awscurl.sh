@@ -17,7 +17,7 @@ fi
 
 # Configurações básicas
 AWS_REGION="us-east-1"
-API_GATEWAY_ID="gkhg0dy3k2"
+REST_API_ID="mez04uhsgk"
 API_STAGE="prod"
 API_RESOURCE_PATH="/accounts"
 
@@ -39,7 +39,8 @@ PAYLOAD_JSON='{
   ]
 }'
 
-API_URL="https://${API_GATEWAY_ID}.execute-api.${AWS_REGION}.amazonaws.com/${API_STAGE}${API_RESOURCE_PATH}"
+API_HOST="${REST_API_ID}.execute-api.${AWS_REGION}.amazonaws.com"
+API_URL="https://${API_HOST}/${API_STAGE}${API_RESOURCE_PATH}"
 
 case "${MODE}" in
   post)

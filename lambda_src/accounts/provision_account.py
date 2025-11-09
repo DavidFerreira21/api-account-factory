@@ -17,6 +17,8 @@ DYNAMO_TABLE = os.environ.get("DYNAMO_TABLE")
 if not DYNAMO_TABLE:
     raise RuntimeError("Missing required environment variable DYNAMO_TABLE")
 PRINCIPAL_ARN = os.environ.get("PRINCIPAL_ARN")
+if not PRINCIPAL_ARN:
+    raise RuntimeError("Missing required environment variable PRINCIPAL_ARN")
 SLEEP = 10
 
 
