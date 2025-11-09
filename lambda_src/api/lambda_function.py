@@ -3,7 +3,7 @@ import boto3
 import os
 import uuid
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Attr
 
@@ -15,7 +15,7 @@ logger.setLevel(logging.INFO)
 dynamodb = boto3.resource("dynamodb")
 org_client = boto3.client("organizations")
 
-TABLE_NAME = os.environ.get("DYNAMO_TABLE")
+TABLE_NAME = os.environ.get("DYNAMO_TABLE", "accfactory-ddb-accounts")
 if not TABLE_NAME:
     raise RuntimeError("Missing required environment variable DYNAMO_TABLE")
 table = dynamodb.Table(TABLE_NAME)
@@ -121,7 +121,7 @@ def create_account(data):
         }
 
     request_id = str(uuid.uuid4())
-    timestamp = datetime.utcnow().isoformat()
+    timestamp = datetime.now(timezone.utc).isoformat()
 
     item = {
         "AccountEmail": data["AccountEmail"].strip().lower(),

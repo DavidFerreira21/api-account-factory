@@ -1,7 +1,7 @@
 import logging
 import os
 import boto3
-from datetime import datetime
+from datetime import datetime, timezone
 from time import sleep
 import json
 
@@ -153,7 +153,7 @@ def update_dynamodb_fields_with_timestamp(
 
     update_expression_parts.append("#LastUpdate = :ts")
     expression_attribute_names["#LastUpdate"] = "LastUpdate"
-    expression_attribute_values[":ts"] = {"S": datetime.utcnow().isoformat() + "Z"}
+    expression_attribute_values[":ts"] = {"S": datetime.now(timezone.utc).isoformat()}
 
     update_expression = "SET " + ", ".join(update_expression_parts)
 
