@@ -73,7 +73,6 @@ resource "aws_iam_role_policy" "api_gw_logs_policy" {
 resource "aws_iam_role_policy_attachment" "api_gw_logs_managed_policy" {
   role       = aws_iam_role.api_gw_logs_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
-  tags = var.tags
 }
 
 resource "aws_api_gateway_rest_api" "this" {
