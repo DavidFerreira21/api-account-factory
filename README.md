@@ -66,7 +66,7 @@ stepFunction --> StepFunction
   - `SFN_MAX_CONCURRENT` — limite de execuções concorrentes aceitas antes de retornar 429 (default `5`).
 
 ## Deploy via Terraform
-1. `cd terraform && terraform init` (primeira vez)  
-2. **API pública**: mantenha `api_gateway_vpc_id` vazio e execute `terraform apply`.  
-3. **API privada**: defina `api_gateway_vpc_id`, `api_gateway_vpc_subnet_ids` e `api_gateway_vpc_allowed_cidrs`, depois `terraform apply`. O módulo cria o VPC endpoint Interface automaticamente e a policy limita o acesso ao VPCE.  
-4. Após o apply, rode `../test_awscurl.sh` para testar com o host público (ou, no caso privado, usando o DNS do VPCE).  
+1. **Deploy manual** `cd terraform && terraform init && terraform apply`
+2. **API pública**: mantenha a variavel `api_gateway_vpc_id` vazio e execute `make tf-deploy`
+3. **API privada**: defina a variavel  `api_gateway_vpc_id`, `api_gateway_vpc_subnet_ids` e `api_gateway_vpc_allowed_cidrs`, depois `make tf-deploy`. O módulo cria o VPC endpoint Interface automaticamente e restringe acesso via `aws:SourceVpce`.  
+4. Após o apply, use o script `test_awscurl.sh` para fazer um requisição de conta e validar o endpoint (público ou privado conforme o ambiente).  

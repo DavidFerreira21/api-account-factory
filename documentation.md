@@ -19,9 +19,9 @@ Documentação completa da solução de criação e acompanhamento de contas AWS
 ---
 
 ## 1. Visão Geral e Objetivos
-- Expor um endpoint HTTP simples para solicitar criação de contas AWS.
-- Persistir requisições em DynamoDB (`AccountsTable`) e iniciar a Step Function automaticamente via Streams.
-- Executar validações (payload, OU, duplicidade), provisionar via Service Catalog e atualizar status/timestamps até `Provisioned` ou `Failed`.
+- Automação expõe uma API CRUD que recebe pedidos de contas AWS, valida/normaliza dados, grava no DynamoDB e aciona a Step Function para provisionar via Control Tower / Service Catalog.
+- Objetivo principal: permitir que fluxos internos da companhia integrem a criação de contas AWS por meio de uma API REST única, garantindo validações, rastreabilidade e atualização de status em tempo real.
+- Fluxo core: `POST /createAccount` → DynamoDB/Streams → Step Function (`Validate → Provision → Check → Update`) → retorno para a API via `GET /getAccount`.
 
 ---
 
