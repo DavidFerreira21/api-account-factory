@@ -7,6 +7,7 @@ Permitir que os fluxos de automação da companhia incluam a criação de contas
 
 ## Documentação principal
 - Consulte [documentation.md](documentation.md) para arquitetura completa, payloads, IAM e fluxos detalhados.
+- Licença: [MIT](LICENSE).
 
 
 ## Arquitetura e Fluxo
