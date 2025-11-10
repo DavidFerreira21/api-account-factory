@@ -68,7 +68,13 @@ resource "aws_iam_role_policy" "lambda_provisioning_policy" {
           "controltower:DeregisterManagedAccount",
           "sso:*",
           "sso-admin:*",
-          "sso-directory:*",
+          "sso-directory:*"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      },
+      {
+        Action = [
           "iam:CreateRole",
           "iam:AttachRolePolicy",
           "iam:PassRole",
@@ -77,8 +83,12 @@ resource "aws_iam_role_policy" "lambda_provisioning_policy" {
           "iam:CreatePolicy",
           "iam:AttachGroupPolicy"
         ]
-        Effect   = "Allow"
-        Resource = "*"
+        Effect = "Allow"
+        Resource = [
+          "arn:aws:iam::${local.account_id}:role/${local.prefix}-*",
+          "arn:aws:iam::${local.account_id}:policy/${local.prefix}-*",
+          "arn:aws:iam::${local.account_id}:group/${local.prefix}-*"
+        ]
       },
       {
         Action = [

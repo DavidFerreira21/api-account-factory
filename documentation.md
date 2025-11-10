@@ -97,7 +97,7 @@ Base: API Gateway → Lambda (`lambda_src/api/lambda_function.py`).
 | `lambda_src/api/lambda_function.py` | API Gateway | GET/POST, valida payloads, escreve/le no DynamoDB, consulta Organizations | Usa `DYNAMO_TABLE`. |
 | `lambda_src/accounts/trigger_sfn.py` | DynamoDB Streams (INSERT) | Inicia Step Function com itens `Status=Requested` | Requer `SFN_ARN`. |
 | `lambda_src/accounts/validate_fields.py` | Step Function | Normaliza dados, valida emails, OU, duplicidade no Dynamo e Organizations | Levanta exceções com `account_email` para rastreio. |
-| `lambda_src/accounts/provision_account.py` | Step Function | Interage com Service Catalog (Account Factory), associa launch role, salva `ProvisionedProductId` no Dynamo | Usa env `PRINCIPAL_ARN`, atualiza `Status=IN_PROCESSING`. |
+| `lambda_src/accounts/provision_account.py` | Step Function | Interage com Service Catalog (Account Factory), garante associação da role de provisionamento ao portfólio e salva `ProvisionedProductId` no Dynamo | Usa env `PRINCIPAL_ARN`, atualiza `Status=IN_PROCESSING`. |
 | `lambda_src/accounts/check_account_status.py` | Step Function (loop) | Consulta `describe_provisioned_product`, mantém status atualizado | Trata `UNDER_CHANGE` e envia erros para o catch. |
 | `lambda_src/accounts/update_succeed_status.py` | Step Function (sucesso) | Busca `AccountId` via `get_provisioned_product_outputs`, marca `Status=ACTIVE` | Atualiza `AccountId` + timestamps. |
 | `lambda_src/accounts/update_failed_status.py` | Step Function (erro) | Extrai `account_email` do erro, marca ou remove item no Dynamo | Atualmente remove registro (`delete_item`); pode ser ajustado para `Status=Failed`. |
@@ -147,7 +147,7 @@ Variáveis úteis (definidas em `terraform/variables.tf`):
 - Lambda API: DynamoDB (`GetItem`, `PutItem`, `Scan`, `Query`) + Organizations (`ListRoots`, `ListOrganizationalUnitsForParent`).  
 - Trigger: `states:StartExecution`.  
 - Atualização de falhas: `dynamodb:DeleteItem` (ou `UpdateItem`).  
-- Provisionamento: Service Catalog (`ProvisionProduct`, `DescribeProduct`, etc.), Control Tower (`CreateManagedAccount`), IAM (`PassRole`), SSO APIs conforme necessário.  
+- Provisionamento: Service Catalog (`ProvisionProduct`, `DescribeProduct`, etc.), Control Tower (`CreateManagedAccount`), IAM/SSO (criação e `PassRole`) concentrados na `lambda_provisioning_role`.  
 - Step Function tem role própria para invocar as Lambdas.  
 - Módulo API Gateway cria role para enviar logs ao CloudWatch.
 

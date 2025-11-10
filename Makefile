@@ -17,5 +17,9 @@ tf-plan:
 tf-apply:
 	terraform -chdir=$(TF_DIR) apply
 
+tf-deploy: 
+	terraform -chdir=$(TF_DIR) init
+	terraform -chdir=$(TF_DIR) apply -auto-approve
+
 tf-destroy:
 	terraform -chdir=$(TF_DIR) destroy
