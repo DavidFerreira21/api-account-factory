@@ -260,6 +260,31 @@ module "check_status_lambda" {
   tags          = local.default_tags
 }
 
+module "bootstrap_accounts_lambda" {
+  source        = "./modules/lambda"
+  function_name = "${local.prefix}-bootstrap-accounts"
+  role_arn      = aws_iam_role.lambda_validation_role.arn
+  handler       = "bootstrap_accounts.lambda_handler"
+  runtime       = "python3.11"
+  source_file   = "${local.lambda_src_path}/accounts/bootstrap_accounts.py"
+  output_path   = "${local.lambda_src_path}/artfacts/bootstrap_accounts.zip"
+  tags          = local.default_tags
+  environment = {
+    DYNAMO_TABLE = aws_dynamodb_table.accounts.name
+  }
+}
+
+resource "aws_ssm_association" "bootstrap_weekly" {
+  name                = "AWS-InvokeLambdaFunction"
+  association_name    = "${local.prefix}-bootstrap-weekly"
+  schedule_expression = "cron(0 5 ? * MON *)"
+
+  parameters = {
+    FunctionName = [module.bootstrap_accounts_lambda.function_name]
+    Payload      = ["{}"]
+  }
+}
+
 module "update_status_lambda" {
   source        = "./modules/lambda"
   function_name = "UpdateSucceedStatusLambda"

@@ -101,6 +101,7 @@ Base: API Gateway → Lambda (`lambda_src/api/lambda_function.py`).
 | `lambda_src/accounts/check_account_status.py` | Step Function (loop) | Consulta `describe_provisioned_product`, mantém status atualizado | Trata `UNDER_CHANGE` e envia erros para o catch. |
 | `lambda_src/accounts/update_succeed_status.py` | Step Function (sucesso) | Busca `AccountId` via `get_provisioned_product_outputs`, marca `Status=ACTIVE` | Atualiza `AccountId` + timestamps. |
 | `lambda_src/accounts/update_failed_status.py` | Step Function (erro) | Extrai `account_email` do erro, marca ou remove item no Dynamo | Atualmente remove registro (`delete_item`); pode ser ajustado para `Status=Failed`. |
+| `lambda_src/accounts/bootstrap_accounts.py` | Execução agendada (SSM) | Lista contas do AWS Organizations, reconstrói caminho de OU e sincroniza tags/meta no DynamoDB | Roda semanalmente via SSM Association e pode ser invocada manualmente (vide README). |
 
 
 ---
@@ -160,14 +161,15 @@ Variáveis úteis (definidas em `terraform/variables.tf`):
 - **Endpoints privados**: sempre definir `api_gateway_vpc_allowed_cidrs` ao usar `api_gateway_vpc_id`.  
 - **Backups**: habilitar backups automáticos na tabela DynamoDB se exigido.  
 - **Retries**: ajustar `Wait` e `Retry` nos estados do Step Function para evitar loops excessivos.
+- **Bootstrap**: após o deploy inicial o SSM Association (cron semanal) chama automaticamente a Lambda `bootstrap-accounts`, reconstruindo caminho de OU e tags de cada conta; você pode invocá-la manualmente se precisar resincronizar (veja README).
 
 ---
 
 ## 10. Fluxo de Desenvolvimento
-1. **Instalação**: `python3 -m pip install --user --break-system-packages -r requirements-dev.txt`.  
+1. **Instalação**: `python3 -m pip install -r requirements-dev.txt`.  
 2. **Lint + Testes**: `make test` (executa `scripts/lint.sh` com Ruff/Black e `python3 -m pytest`).  
 3. **Infra**: `make tf-plan` e `make tf-apply` dentro de `terraform/`.  
-4. **Testes manuais**: usar `test_awscurl.sh` para enviar POST/GET rapidamente (ajuste payload e Gateway ID).  
+4. **Testes manuais**: usar `scripts/awscurl.sh` para enviar POST/GET rapidamente (ajuste payload, IDs ou utilize o modo lista até 5 contas).  
 5. **Observabilidade**: conferir logs dos Lambdas/Step Function no CloudWatch após alterações.
 
 ---

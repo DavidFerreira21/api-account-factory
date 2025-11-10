@@ -73,3 +73,8 @@ module "accounts_api_gateway" {
   vpc_allowed_cidrs     = var.api_gateway_vpc_allowed_cidrs
   tags                  = local.default_tags
 }
+
+output "bootstrap_accounts_lambda_name" {
+  description = "Nome da Lambda usada para carregar contas existentes do Organizations"
+  value       = module.bootstrap_accounts_lambda.function_name
+}
