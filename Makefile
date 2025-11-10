@@ -23,3 +23,4 @@ tf-deploy: tf-apply
 
 tf-destroy:
 	terraform -chdir=$(TF_DIR) destroy -auto-approve
+
