@@ -6,7 +6,7 @@ lint:
 	bash scripts/lint.sh
 
 test: lint
-	python3 -m pytest
+	python3 -m pytest tests
 
 security-check:
 	checkov -d $(TF_DIR) --check MEDIUM,HIGH,CRITICAL

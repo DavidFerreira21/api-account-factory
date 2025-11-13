@@ -168,9 +168,10 @@ Variáveis úteis (definidas em `terraform/variables.tf`):
 ## 10. Fluxo de Desenvolvimento
 1. **Instalação**: `python3 -m pip install -r requirements-dev.txt`.  
 2. **Lint + Testes**: `make test` (executa `scripts/lint.sh` com Ruff/Black e `python3 -m pytest`).  
-3. **Infra**: `make tf-plan` e `make tf-apply` dentro de `terraform/`.  
-4. **Testes manuais**: usar `scripts/awscurl.sh` para enviar POST/GET rapidamente (ajuste payload, IDs ou utilize o modo lista até 5 contas).  
-5. **Observabilidade**: conferir logs dos Lambdas/Step Function no CloudWatch após alterações.
+3. **Security Check**: `make security-check` executa Checkov apontando para `terraform/` e limita a validação às severidades `MEDIUM`, `HIGH` e `CRITICAL`. Ajuste o código até não haver findings nesses níveis.  
+4. **Infra**: `make tf-plan` e `make tf-apply` dentro de `terraform/`.  
+5. **Testes manuais**: usar `scripts/awscurl.sh` para enviar POST/GET rapidamente (ajuste payload, IDs ou utilize o modo lista até 5 contas).  
+6. **Observabilidade**: conferir logs dos Lambdas/Step Function no CloudWatch após alterações.
 
 ---
 
