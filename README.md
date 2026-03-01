@@ -1,6 +1,7 @@
 # Accounts API — Automação de Criação de Contas AWS
 
 [![CI](https://github.com/DavidFerreira21/api-account-factory/actions/workflows/ci.yml/badge.svg)](https://github.com/DavidFerreira21/api-account-factory/actions/workflows/ci.yml)
+**Release atual:** `v1.0.0`
 
 
 ## Objetivo

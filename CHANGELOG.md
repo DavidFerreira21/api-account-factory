@@ -1,6 +1,7 @@
 # Changelog
 
 Todas as mudanças relevantes deste projeto serão documentadas aqui.
+Versão estável atual: `v1.0.0`.
 
 Formato baseado em Keep a Changelog e Versionamento Semântico.
 

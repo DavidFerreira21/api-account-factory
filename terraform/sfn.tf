@@ -1,4 +1,4 @@
-# Role 1: Execução completa (Service Catalog + Dynamo + etc) para o Lambda de provisionamento
+# Role 1: Full execution permissions (Service Catalog + Dynamo + etc.) for provisioning Lambda.
 resource "aws_iam_role" "lambda_provisioning_role" {
   name               = "${local.prefix}-provisioning-lambda-role"
   assume_role_policy = local.lambda_assume_role
@@ -103,7 +103,7 @@ resource "aws_iam_role_policy" "lambda_provisioning_policy" {
   })
 }
 
-# Role 2: Validação / API (Dynamo + Organizations)
+# Role 2: Validation/API permissions (Dynamo + Organizations).
 resource "aws_iam_role" "lambda_validation_role" {
   name               = "${local.prefix}-validation-lambda-role"
   assume_role_policy = local.lambda_assume_role
@@ -220,6 +220,7 @@ resource "aws_iam_role_policy" "lambda_ddb_sfn_policy" {
 }
 
 # ---------------- Lambda Functions ----------------
+# Domain Lambdas in the workflow (validation, provisioning, status, bootstrap).
 
 
 module "validate_lambda" {
@@ -285,6 +286,7 @@ module "bootstrap_accounts_lambda" {
 }
 
 action "aws_lambda_invoke" "bootstrap_accounts_after_deploy" {
+  # Day-2 action: sync legacy accounts after SFN create/update.
   config {
     function_name = module.bootstrap_accounts_lambda.function_name
     payload = jsonencode({
@@ -343,6 +345,7 @@ module "trigger_lambda" {
 
 
 # ---------------- Step Function ----------------
+# State Machine execution role.
 data "aws_iam_policy_document" "sfn_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -397,6 +400,7 @@ resource "aws_sfn_state_machine" "create_account_sfn" {
   })
 
   lifecycle {
+    # Trigger bootstrap automatically after SFN deploy/update.
     action_trigger {
       events  = [after_create, after_update]
       actions = [action.aws_lambda_invoke.bootstrap_accounts_after_deploy]

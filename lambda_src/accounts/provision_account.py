@@ -1,3 +1,9 @@
+"""Provision accounts through AWS Control Tower Account Factory.
+
+This Lambda receives the validated item, resolves product/portfolio/artifact
+in Service Catalog, starts provisioning, and persists metadata in DynamoDB.
+"""
+
 import logging
 import os
 import boto3
@@ -12,7 +18,7 @@ LOGGER.setLevel(logging.INFO)
 
 dynamo_client = boto3.client("dynamodb")
 SC = boto3.client("servicecatalog")
-# padroniza variável de ambiente
+# Standardized environment variable name.
 DYNAMO_TABLE = os.environ.get("DYNAMO_TABLE")
 if not DYNAMO_TABLE:
     raise RuntimeError("Missing required environment variable DYNAMO_TABLE")
@@ -23,6 +29,7 @@ SLEEP = 10
 
 
 def get_product_id():
+    """Return the Account Factory ProductId from Service Catalog."""
     filters = {"Owner": ["AWS Control Tower"]}
     af_product_name = "AWS Control Tower Account Factory"
     key = "ProductViewSummary"
@@ -37,6 +44,7 @@ def get_product_id():
 
 
 def get_portfolio_id(prod_id):
+    """Return the PortfolioId associated with Account Factory product."""
     try:
         portfolios = SC.list_portfolios_for_product(ProductId=prod_id)[
             "PortfolioDetails"
@@ -50,6 +58,7 @@ def get_portfolio_id(prod_id):
 
 
 def get_provisioning_artifact_id(prod_id):
+    """Return the most recent provisioning artifact ID."""
     try:
         artifacts = SC.describe_product_as_admin(Id=prod_id)[
             "ProvisioningArtifactSummaries"
@@ -61,6 +70,7 @@ def get_provisioning_artifact_id(prod_id):
 
 
 def generate_input_params(item):
+    """Build the parameters expected by Account Factory."""
     return [
         {"Key": "SSOUserEmail", "Value": item["SSOUserEmail"]},
         {"Key": "SSOUserFirstName", "Value": item["SSOUserFirstName"]},
@@ -72,6 +82,7 @@ def generate_input_params(item):
 
 
 def generate_provisioned_product_name(params):
+    """Build the provisioned product name based on AccountName."""
     for p in params:
         if p["Key"] == "AccountName":
             return f"AccountLaunch-{p['Value']}"
@@ -122,6 +133,7 @@ def associate_principal_portfolio(principal, port_id):
 
 
 def get_pp_status(pp_id):
+    """Return current provisioned product status."""
     try:
         result = SC.describe_provisioned_product(Id=pp_id)["ProvisionedProductDetail"]
         return result["Status"], result.get("StatusMessage", "")
@@ -131,6 +143,7 @@ def get_pp_status(pp_id):
 
 
 def format_dynamo_value(value):
+    """Convert Python values into DynamoDB AttributeValue format."""
     if isinstance(value, bool):
         return {"BOOL": value}
     elif isinstance(value, (int, float)):
@@ -142,6 +155,7 @@ def format_dynamo_value(value):
 def update_dynamodb_fields_with_timestamp(
     dynamo_client, table_name, key_field, key_value, update_fields
 ):
+    """Update multiple DynamoDB fields and store an update timestamp."""
     update_expression_parts = []
     expression_attribute_names = {}
     expression_attribute_values = {}
@@ -169,6 +183,7 @@ def update_dynamodb_fields_with_timestamp(
 
 
 def lambda_handler(event, context):
+    """Entry point for the ProvisionAccount step in the Step Function."""
 
     class ProvisionErrorWithData(Exception):
         def __init__(self, message, account_email):

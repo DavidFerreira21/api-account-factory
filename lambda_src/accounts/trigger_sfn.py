@@ -1,3 +1,5 @@
+"""Start Step Function executions from DynamoDB Streams events."""
+
 import json
 import boto3
 import os
@@ -11,9 +13,10 @@ sfn_client = boto3.client("stepfunctions")
 
 
 def lambda_handler(event, context):
+    """Start executions for INSERT records where Status=Requested."""
     for record in event.get("Records", []):
         try:
-            # Confirma que é insert e status é Requested
+            # Process only INSERT events with requested status.
             if record["eventName"] != "INSERT":
                 continue
 
@@ -22,7 +25,7 @@ def lambda_handler(event, context):
             if status != "Requested":
                 continue
 
-            # Monta payload para Step Function
+            # Build Step Function payload from DynamoDB NewImage.
             payload = {k: list(v.values())[0] for k, v in new_image.items()}
             logger.info(f"Starting Step Function with payload: {payload}")
 

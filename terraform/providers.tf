@@ -1,3 +1,4 @@
+# Terraform/Core providers used across the solution.
 terraform {
   required_version = ">= 1.14.0"
   required_providers {

@@ -1,3 +1,5 @@
+"""Failure handler: remove failed account request from DynamoDB."""
+
 import json
 import logging
 import os
@@ -14,6 +16,7 @@ if not DYNAMO_TABLE:
 
 
 def lambda_handler(event, context):
+    """Entry point for the UpdateStatusFailed step in the Step Function."""
     try:
         account_email = None
         error_message_str = "{}"

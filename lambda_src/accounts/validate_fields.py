@@ -1,3 +1,9 @@
+"""Validate input payload before account provisioning.
+
+Performs normalization, email validation, duplicate checks in Organizations,
+and previous-state checks in DynamoDB.
+"""
+
 import logging
 import re
 import boto3
@@ -9,15 +15,15 @@ import json
 LOGGER = logging.getLogger()
 LOGGER.setLevel(logging.INFO)
 
-# ---------------- Clients AWS ----------------
+# ---------------- AWS clients ----------------
 ORG = boto3.client("organizations")
 DYNO = boto3.client("dynamodb")
-# padroniza variável de ambiente para o nome da tabela
+# Standardized environment variable name for DynamoDB table.
 DYNAMO_TABLE = os.environ.get("DYNAMO_TABLE")
 if not DYNAMO_TABLE:
     raise RuntimeError("Missing required environment variable DYNAMO_TABLE")
 
-# ---------------- Configuração ----------------
+# ---------------- Configuration ----------------
 REQUIRED_FIELDS = [
     "AccountName",
     "AccountEmail",
@@ -31,13 +37,14 @@ REQUIRED_FIELDS = [
 EMAIL_REGEX = r"^[\w\.-]+@[\w\.-]+\.\w+$"
 
 
-# ---------------- Funções auxiliares ----------------
+# ---------------- Helper functions ----------------
 def is_valid_email(email):
+    """Return True when the email matches the expected format."""
     return re.match(EMAIL_REGEX, email) is not None
 
 
 def normalize_item(item):
-    """Coloca AccountEmail, SSOUserEmail e AccountName em lowercase e first letter maiúscula para nomes"""
+    """Normalize case for account/SSO fields and capitalize first/last names."""
     item["AccountEmail"] = item["AccountEmail"].lower()
     item["SSOUserEmail"] = item["SSOUserEmail"].lower()
     item["AccountName"] = item["AccountName"].lower()
@@ -47,7 +54,7 @@ def normalize_item(item):
 
 
 def check_existing_account(account_name, account_email):
-    """Verifica se já existe na AWS Organizations"""
+    """Check whether account name/email already exists in Organizations."""
     try:
         paginator = ORG.get_paginator("list_accounts")
         for page in paginator.paginate():
@@ -66,7 +73,7 @@ def check_existing_account(account_name, account_email):
 
 
 def already_processed(account_email):
-    """Verifica se já foi processado ou está em andamento no DynamoDB"""
+    """Check whether the account request was already processed or is in progress."""
     try:
         response = DYNO.get_item(
             TableName=DYNAMO_TABLE, Key={"AccountEmail": {"S": account_email.lower()}}
@@ -83,20 +90,23 @@ def already_processed(account_email):
     return False
 
 
-# ---------------- Lambda Handler ----------------
+# ---------------- Lambda handler ----------------
 
 
 class ValidationErrorWithData(Exception):
+    """Validation error enriched with account identifier."""
+
     def __init__(self, message, account_email):
         super().__init__(message)
         self.item = {"account_email": account_email or "desconhecido"}
 
 
 def lambda_handler(event, context):
+    """Entry point for the Validate step in the Step Function."""
     item = event
 
     try:
-        # Campos obrigatórios
+        # Required fields
         missing_fields = [f for f in REQUIRED_FIELDS if f not in item]
         if missing_fields:
             raise ValidationErrorWithData(
@@ -104,10 +114,10 @@ def lambda_handler(event, context):
                 item.get("AccountEmail", "desconhecido"),
             )
 
-        # Normaliza
+        # Normalize
         item = normalize_item(item)
 
-        # Valida emails
+        # Validate emails
         if not is_valid_email(item["AccountEmail"]) or not is_valid_email(
             item["SSOUserEmail"]
         ):
@@ -115,27 +125,27 @@ def lambda_handler(event, context):
                 "Formato de e-mail inválido", item.get("AccountEmail", "desconhecido")
             )
 
-        # Checa duplicidade na Organizations
+        # Check duplicates in Organizations
         if check_existing_account(item["AccountName"], item["AccountEmail"]):
             raise ValidationErrorWithData(
                 "AccountName ou AccountEmail já existem na Organizations",
                 item.get("AccountEmail", "desconhecido"),
             )
 
-        # Checa duplicidade no DynamoDB
+        # Check duplicates in DynamoDB
         if already_processed(item["AccountEmail"]):
             raise ValidationErrorWithData(
                 "Item já foi processado ou está em andamento",
                 item.get("AccountEmail", "desconhecido"),
             )
 
-        # Sucesso
+        # Success
         LOGGER.info(f"Item validado com sucesso: {item}")
         item["Validation"] = True
         return item
 
     except ValidationErrorWithData as e:
-        # Erros de validação controlados
+        # Controlled validation errors
         raise Exception(
             json.dumps(
                 {
@@ -147,7 +157,7 @@ def lambda_handler(event, context):
         )
 
     except Exception as e:
-        # Erros inesperados
+        # Unexpected errors
         raise Exception(
             json.dumps(
                 {

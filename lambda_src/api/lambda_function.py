@@ -1,3 +1,10 @@
+"""Accounts API handler.
+
+Main flow:
+- GET: query account by email or AccountId.
+- POST: validate input, save request in DynamoDB, and delegate async processing.
+"""
+
 import json
 import boto3
 import os
@@ -25,11 +32,12 @@ SFN_MAX_CONCURRENT = int(os.environ.get("SFN_MAX_CONCURRENT", "5"))
 
 
 def format_name(name):
-    """Formata nomes com capitalização"""
+    """Normalize capitalization for person names."""
     return " ".join([part.capitalize() for part in name.strip().split()])
 
 
 def has_available_capacity():
+    """Check if Step Function has capacity for new executions."""
     if not SFN_ARN:
         return True
     try:
@@ -54,6 +62,7 @@ def has_available_capacity():
 
 
 def lambda_handler(event, context):
+    """HTTP entry point (API Gateway proxy integration)."""
     method = event.get("httpMethod")
     logger.info(f"HTTP Method: {method}")
     logger.info(f"Event received: {json.dumps(event)}")
@@ -78,7 +87,7 @@ def lambda_handler(event, context):
                 "body": json.dumps({"error": "Too many requests in progress"}),
             }
 
-        # Valida campos obrigatórios
+        # Validate required fields.
         required_fields = [
             "AccountEmail",
             "AccountName",
@@ -94,7 +103,7 @@ def lambda_handler(event, context):
                 "body": json.dumps({"error": f"Missing fields: {', '.join(missing)}"}),
             }
 
-        # Formata nomes
+        # Normalize name capitalization.
         body["SSOUserFirstName"] = format_name(body["SSOUserFirstName"])
         body["SSOUserLastName"] = format_name(body["SSOUserLastName"])
 
@@ -106,6 +115,7 @@ def lambda_handler(event, context):
 
 # ---------------- GET ----------------
 def get_account(account_email=None, account_id=None):
+    """Query account from DynamoDB by email (PK) or AccountId."""
     try:
         if account_email:
             response = table.get_item(
@@ -141,6 +151,7 @@ def get_account(account_email=None, account_id=None):
 
 # ---------------- POST ----------------
 def create_account(data):
+    """Create an account request in DynamoDB with initial Requested status."""
     if not validate_account_name(data["AccountName"]):
         return {
             "statusCode": 409,
@@ -188,12 +199,9 @@ def create_account(data):
 
 # ---------------- Validation ----------------
 def validate_org_unit(ou_path):
-    """
-    Valida se uma OU existe seguindo o caminho especificado (ex: "Engineering/Platform").
-    Retorna True se encontrar a OU exata no caminho especificado.
-    """
+    """Validate that the OU path exists (for example: Engineering/Platform)."""
     try:
-        # Pega o root como ponto de partida
+        # Use organization root as the starting point.
         roots = org_client.list_roots()
         if not roots.get("Roots"):
             logger.error("Nenhum root encontrado na organização")
@@ -202,29 +210,29 @@ def validate_org_unit(ou_path):
         current_parent_id = roots["Roots"][0]["Id"]
         ou_parts = [part.strip() for part in ou_path.split("/") if part.strip()]
 
-        # Para cada parte do caminho (Engineering, depois Platform, etc)
+        # Resolve each path segment (Engineering, Platform, ...).
         for ou_name in ou_parts:
             found = False
             paginator = org_client.get_paginator("list_organizational_units_for_parent")
 
-            # Lista OUs do nível atual
+            # List OUs under current parent.
             for page in paginator.paginate(ParentId=current_parent_id):
                 for ou in page["OrganizationalUnits"]:
                     if ou["Name"].lower() == ou_name.lower():
-                        current_parent_id = ou["Id"]  # Move para próximo nível
+                        current_parent_id = ou["Id"]  # Move to next level.
                         found = True
                         break
                 if found:
                     break
 
-            # Se não achou alguma parte do caminho, OU não existe
+            # If a segment is not found, the OU path is invalid.
             if not found:
                 logger.warning(
                     f"OU não encontrada no caminho: {ou_path} (parou em: {ou_name})"
                 )
                 return False
 
-        # Se chegou aqui, encontrou todo o caminho
+        # Full path resolved.
         return True
 
     except Exception as e:
@@ -233,6 +241,7 @@ def validate_org_unit(ou_path):
 
 
 def validate_account_name(account_name):
+    """Ensure there is no existing account with the same name in DynamoDB."""
     try:
         response = table.scan(
             FilterExpression=Attr("AccountName").eq(account_name.strip().lower())

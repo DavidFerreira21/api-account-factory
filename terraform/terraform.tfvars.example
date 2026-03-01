@@ -1,3 +1,4 @@
+# Baseline configuration for release v1.0.0
 aws_region = "us-east-1"
 name_prefix = "accfactory"
 solution_url = "https://github.com/DavidFerreira21/api-account-factory"

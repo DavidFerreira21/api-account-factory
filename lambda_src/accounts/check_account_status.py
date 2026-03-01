@@ -1,3 +1,5 @@
+"""Check provisioning status in AWS Service Catalog."""
+
 import logging
 import boto3
 import json
@@ -9,7 +11,7 @@ SC = boto3.client("servicecatalog")
 
 
 def get_pp_status(pp_id):
-    """Retorna o status atual do Provisioned Product e mensagem de erro (se houver)."""
+    """Return current Provisioned Product status and optional error message."""
     try:
         result = SC.describe_provisioned_product(Id=pp_id)["ProvisionedProductDetail"]
         status = result["Status"]
@@ -21,6 +23,7 @@ def get_pp_status(pp_id):
 
 
 def lambda_handler(event, context):
+    """Entry point for the CheckAccountStatus step in the Step Function."""
 
     class CheckStatusErrorWithData(Exception):
         def __init__(self, message, account_email):
@@ -40,7 +43,7 @@ def lambda_handler(event, context):
         sc_status, sc_message = get_pp_status(pp_id)
         LOGGER.info(f"ProvisionedProductId: {pp_id} Status SC={sc_status}")
 
-        # Atualiza o status apenas se diferente de UNDER_CHANGE
+        # Update local status only when it is no longer UNDER_CHANGE.
         if sc_status != "UNDER_CHANGE":
             item["Status"] = sc_status
 

@@ -1,3 +1,5 @@
+"""Update successful account provisioning status in DynamoDB."""
+
 import logging
 import os
 import boto3
@@ -8,16 +10,14 @@ LOGGER.setLevel(logging.INFO)
 
 sevicecatalog_client = boto3.client("servicecatalog")
 dynamo_client = boto3.client("dynamodb")
-# padroniza variável de ambiente para o nome da tabela
+# Standardized environment variable name for DynamoDB table.
 DYNAMO_TABLE = os.environ.get("DYNAMO_TABLE")
 if not DYNAMO_TABLE:
     raise RuntimeError("Missing required environment variable DYNAMO_TABLE")
 
 
 def get_account_id(servicecatalog_client, pp_id):
-    """
-    Busca o AccountId associado ao ProvisionedProductId usando a API get_provisioned_product_outputs.
-    """
+    """Get AccountId from ProvisionedProductId using get_provisioned_product_outputs."""
     try:
         response = servicecatalog_client.get_provisioned_product_outputs(
             ProvisionedProductId=pp_id
@@ -35,6 +35,7 @@ def get_account_id(servicecatalog_client, pp_id):
 
 
 def format_dynamo_value(value):
+    """Convert Python values to DynamoDB AttributeValue format."""
     if isinstance(value, bool):
         return {"BOOL": value}
     elif isinstance(value, (int, float)):
@@ -46,6 +47,7 @@ def format_dynamo_value(value):
 def update_dynamodb_fields_with_timestamp(
     dynamo_client, table_name, key_field, key_value, update_fields
 ):
+    """Update DynamoDB fields and record the latest update timestamp."""
     update_expression_parts = []
     expression_attribute_names = {}
     expression_attribute_values = {}
@@ -73,9 +75,10 @@ def update_dynamodb_fields_with_timestamp(
 
 
 def lambda_handler(event, context):
+    """Entry point for the UpdateStatusSuccess step in the Step Function."""
 
     try:
-        # Pega o item com AccountEmail e AccountId
+        # Read the item containing AccountEmail and ProvisionedProductId.
         item = event
         account_email = item.get("AccountEmail")
         pp_id = item.get("ProvisionedProductId")
@@ -100,7 +103,7 @@ def lambda_handler(event, context):
         LOGGER.info(
             f"AccountId {account_id} encontrado para ProvisionedProductId {pp_id}"
         )
-        # Atualiza DynamoDB como Provisioned
+        # Mark account as ACTIVE in DynamoDB.
         update_fields = {
             "Status": "ACTIVE",
             "AccountId": account_id,

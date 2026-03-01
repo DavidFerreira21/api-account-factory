@@ -1,3 +1,9 @@
+"""Bootstrap existing AWS Organizations accounts into DynamoDB.
+
+Runs an initial/on-demand sync to populate or refresh metadata
+for accounts that already exist in the organization.
+"""
+
 import logging
 import os
 import time
@@ -23,6 +29,7 @@ MAX_REPORTED_ERRORS = 10
 
 
 def _to_bool(value, default=False):
+    """Convert generic values to boolean."""
     if value is None:
         return default
     if isinstance(value, bool):
@@ -33,6 +40,7 @@ def _to_bool(value, default=False):
 
 
 def _iter_accounts_pages():
+    """Return account pages with retry/backoff for IAM propagation."""
     paginator = ORG.get_paginator("list_accounts")
     delay_seconds = 2
     for attempt in range(1, MAX_IAM_PROPAGATION_RETRIES + 1):
@@ -57,10 +65,12 @@ def _iter_accounts_pages():
 
 
 def _iso_now() -> str:
+    """Generate UTC timestamp in ISO-8601 format."""
     return datetime.now(timezone.utc).isoformat()
 
 
 def _ensure_ou_cache():
+    """Build an in-memory OU path cache to reduce repeated API calls."""
     global ROOT_NAME
     if OU_CACHE:
         return
@@ -86,6 +96,7 @@ def _ensure_ou_cache():
 
 
 def _get_ou_path(account_id: str) -> str:
+    """Resolve account OU path and return a default value on failure."""
     _ensure_ou_cache()
     try:
         parents = ORG.list_parents(ChildId=account_id).get("Parents", [])
@@ -101,6 +112,7 @@ def _get_ou_path(account_id: str) -> str:
 
 
 def _normalize(account, ou_path):
+    """Normalize account metadata to DynamoDB storage format."""
     email = account["Email"].lower()
     timestamp = account.get("JoinedTimestamp")
     joined_at = timestamp.isoformat() if timestamp else _iso_now()
@@ -121,6 +133,7 @@ def _normalize(account, ou_path):
 
 
 def _fetch_tags(account_id):
+    """Fetch account tags from Organizations with pagination."""
     try:
         paginator = ORG.get_paginator("list_tags_for_resource")
         tags = []
@@ -136,6 +149,7 @@ def _fetch_tags(account_id):
 
 
 def lambda_handler(event, context):
+    """Bootstrap entry point triggered by Terraform action/manual invoke."""
     event = event or {}
     LOGGER.info("Iniciando bootstrap de contas do Organizations para %s", TABLE_NAME)
     processed = 0

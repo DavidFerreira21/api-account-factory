@@ -1,4 +1,5 @@
 # ---------------- DynamoDB ----------------
+# Central table storing request and account state.
 resource "aws_dynamodb_table" "accounts" {
   name         = "${local.prefix}-ddb-accounts"
   billing_mode = "PAY_PER_REQUEST"
@@ -14,12 +15,13 @@ resource "aws_dynamodb_table" "accounts" {
     enabled = true
   }
 
-  # Habilita o Stream
+  # Enable DynamoDB Stream.
   stream_enabled   = true
   stream_view_type = "NEW_IMAGE"
 }
 
 # ---------------- Lambda Event Source Mapping (Trigger SFN) ----------------
+# Route Requested inserts to the Lambda that starts the Step Function.
 resource "aws_lambda_event_source_mapping" "ddb_to_sfn" {
   event_source_arn  = aws_dynamodb_table.accounts.stream_arn
   function_name     = module.trigger_lambda.function_name
@@ -43,6 +45,7 @@ resource "aws_lambda_event_source_mapping" "ddb_to_sfn" {
 
 
 # ---------------- Lambda ----------------
+# API HTTP Lambda (synchronous ingress).
 
 module "accounts_api_lambda" {
   source                         = "./modules/lambda"
@@ -63,6 +66,7 @@ module "accounts_api_lambda" {
 
 
 # ---------------- API Gateway Module ----------------
+# HTTP exposure layer (public or private based on variables).
 
 module "accounts_api_gateway" {
   source                = "./modules/apigw"
@@ -80,16 +84,16 @@ module "accounts_api_gateway" {
 }
 
 output "bootstrap_accounts_lambda_name" {
-  description = "Nome da Lambda usada para carregar contas existentes do Organizations"
+  description = "Lambda name used to bootstrap existing Organizations accounts"
   value       = module.bootstrap_accounts_lambda.function_name
 }
 
 output "api_rest_api_id" {
-  description = "ID do API Gateway"
+  description = "API Gateway ID"
   value       = module.accounts_api_gateway.rest_api_id
 }
 
 output "api_invoke_url" {
-  description = "URL base do API Gateway"
+  description = "API Gateway base invoke URL"
   value       = module.accounts_api_gateway.invoke_url
 }
