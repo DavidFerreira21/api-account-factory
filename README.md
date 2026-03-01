@@ -25,7 +25,7 @@ Com a solução, o processo passa a ser:
 1. Clone o repositório:
    ```bash
    git clone <url-do-repo>
-   cd crud
+   cd api-account-factory
    ```
 2. Pré-requisitos:
    ```bash
