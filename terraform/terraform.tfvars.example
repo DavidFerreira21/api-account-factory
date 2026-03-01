@@ -1,4 +1,7 @@
 aws_region = "us-east-1"
+name_prefix = "accfactory"
+solution_url = "https://github.com/DavidFerreira21/api-account-factory"
+default_tags = {}
 
 # API Gateway
 # Publico: deixe api_gateway_vpc_id vazio e api_gateway_vpc_subnet_ids = []
@@ -11,5 +14,24 @@ api_gateway_endpoint_type      = "REGIONAL"
 api_gateway_log_retention_days = 30
 
 # Step Functions / Lambda
+sfn_state_machine_name     = "CreateAccountStateMachine"
+sfn_role_name              = "StepFunctionRole"
+sfn_policy_name            = "StepFunctionPolicy"
 sfn_max_concurrent          = 5
+sfn_wait_seconds            = 300
+
+lambda_runtime_default      = "python3.11"
+lambda_timeout_provision    = 600
+lambda_timeout_bootstrap    = 300
+lambda_memory_bootstrap     = 512
 lambda_reserved_concurrency = null
+bootstrap_fail_on_partial   = false
+
+lambda_name_accounts_api         = ""
+lambda_name_validate_fields      = "Validate_fieldsLambda"
+lambda_name_provision_account    = "ProvisionAccountLambda"
+lambda_name_check_status         = "CheckAccountStatusLambda"
+lambda_name_bootstrap_accounts   = ""
+lambda_name_update_status        = "UpdateSucceedStatusLambda"
+lambda_name_update_failed_status = "UpdateFailedStatusLambda"
+lambda_name_trigger_sfn          = "TriggerSFNLambda"

@@ -224,10 +224,10 @@ resource "aws_iam_role_policy" "lambda_ddb_sfn_policy" {
 
 module "validate_lambda" {
   source                         = "./modules/lambda"
-  function_name                  = "Validate_fieldsLambda"
+  function_name                  = var.lambda_name_validate_fields
   role_arn                       = aws_iam_role.lambda_validation_role.arn
   handler                        = "validate_fields.lambda_handler"
-  runtime                        = "python3.11"
+  runtime                        = var.lambda_runtime_default
   source_file                    = "${local.lambda_src_path}/accounts/validate_fields.py"
   output_path                    = "${local.lambda_src_path}/artfacts/validate_fields.zip"
   tags                           = local.default_tags
@@ -239,11 +239,11 @@ module "validate_lambda" {
 
 module "provision_account_lambda" {
   source                         = "./modules/lambda"
-  function_name                  = "ProvisionAccountLambda"
+  function_name                  = var.lambda_name_provision_account
   role_arn                       = aws_iam_role.lambda_provisioning_role.arn
   handler                        = "provision_account.lambda_handler"
-  runtime                        = "python3.11"
-  timeout                        = 600
+  runtime                        = var.lambda_runtime_default
+  timeout                        = var.lambda_timeout_provision
   source_file                    = "${local.lambda_src_path}/accounts/provision_account.py"
   output_path                    = "${local.lambda_src_path}/artfacts/provision_account.zip"
   tags                           = local.default_tags
@@ -256,10 +256,10 @@ module "provision_account_lambda" {
 
 module "check_status_lambda" {
   source                         = "./modules/lambda"
-  function_name                  = "CheckAccountStatusLambda"
+  function_name                  = var.lambda_name_check_status
   role_arn                       = aws_iam_role.lambda_ddb_sfn_role.arn
   handler                        = "check_account_status.lambda_handler"
-  runtime                        = "python3.11"
+  runtime                        = var.lambda_runtime_default
   source_file                    = "${local.lambda_src_path}/accounts/check_account_status.py"
   output_path                    = "${local.lambda_src_path}/artfacts/check_account_status.zip"
   tags                           = local.default_tags
@@ -268,12 +268,12 @@ module "check_status_lambda" {
 
 module "bootstrap_accounts_lambda" {
   source                         = "./modules/lambda"
-  function_name                  = "${local.prefix}-bootstrap-accounts"
+  function_name                  = local.bootstrap_lambda_function_name
   role_arn                       = aws_iam_role.lambda_validation_role.arn
   handler                        = "bootstrap_accounts.lambda_handler"
-  runtime                        = "python3.11"
-  timeout                        = 300
-  memory_size                    = 512
+  runtime                        = var.lambda_runtime_default
+  timeout                        = var.lambda_timeout_bootstrap
+  memory_size                    = var.lambda_memory_bootstrap
   source_file                    = "${local.lambda_src_path}/accounts/bootstrap_accounts.py"
   output_path                    = "${local.lambda_src_path}/artfacts/bootstrap_accounts.zip"
   tags                           = local.default_tags
@@ -290,17 +290,17 @@ action "aws_lambda_invoke" "bootstrap_accounts_after_deploy" {
     payload = jsonencode({
       source          = "terraform-apply"
       mode            = "bootstrap"
-      fail_on_partial = false
+      fail_on_partial = var.bootstrap_fail_on_partial
     })
   }
 }
 
 module "update_status_lambda" {
   source                         = "./modules/lambda"
-  function_name                  = "UpdateSucceedStatusLambda"
+  function_name                  = var.lambda_name_update_status
   role_arn                       = aws_iam_role.lambda_ddb_sfn_role.arn
   handler                        = "update_succeed_status.lambda_handler"
-  runtime                        = "python3.11"
+  runtime                        = var.lambda_runtime_default
   source_file                    = "${local.lambda_src_path}/accounts/update_succeed_status.py"
   output_path                    = "${local.lambda_src_path}/artfacts/update_succeed_status.zip"
   tags                           = local.default_tags
@@ -312,10 +312,10 @@ module "update_status_lambda" {
 
 module "update_failed_status_lambda" {
   source                         = "./modules/lambda"
-  function_name                  = "UpdateFailedStatusLambda"
+  function_name                  = var.lambda_name_update_failed_status
   role_arn                       = aws_iam_role.lambda_ddb_sfn_role.arn
   handler                        = "update_failed_status.lambda_handler"
-  runtime                        = "python3.11"
+  runtime                        = var.lambda_runtime_default
   source_file                    = "${local.lambda_src_path}/accounts/update_failed_status.py"
   output_path                    = "${local.lambda_src_path}/artfacts/update_failed_status.zip"
   tags                           = local.default_tags
@@ -327,10 +327,10 @@ module "update_failed_status_lambda" {
 
 module "trigger_lambda" {
   source                         = "./modules/lambda"
-  function_name                  = "TriggerSFNLambda"
+  function_name                  = var.lambda_name_trigger_sfn
   role_arn                       = aws_iam_role.lambda_ddb_sfn_role.arn
   handler                        = "trigger_sfn.lambda_handler"
-  runtime                        = "python3.11"
+  runtime                        = var.lambda_runtime_default
   source_file                    = "${local.lambda_src_path}/accounts/trigger_sfn.py"
   output_path                    = "${local.lambda_src_path}/artfacts/trigger_sfn.zip"
   tags                           = local.default_tags
@@ -354,13 +354,13 @@ data "aws_iam_policy_document" "sfn_assume_role" {
 }
 
 resource "aws_iam_role" "sfn_role" {
-  name               = "StepFunctionRole"
+  name               = var.sfn_role_name
   assume_role_policy = data.aws_iam_policy_document.sfn_assume_role.json
   tags               = local.default_tags
 }
 
 resource "aws_iam_role_policy" "sfn_policy" {
-  name = "StepFunctionPolicy"
+  name = var.sfn_policy_name
   role = aws_iam_role.sfn_role.id
   policy = jsonencode({
     Version = "2012-10-17",
@@ -383,7 +383,7 @@ resource "aws_iam_role_policy" "sfn_policy" {
 }
 
 resource "aws_sfn_state_machine" "create_account_sfn" {
-  name     = "CreateAccountStateMachine"
+  name     = var.sfn_state_machine_name
   role_arn = aws_iam_role.sfn_role.arn
   tags     = local.default_tags
 
@@ -393,6 +393,7 @@ resource "aws_sfn_state_machine" "create_account_sfn" {
     check_status_lambda         = module.check_status_lambda.arn
     update_status_lambda        = module.update_status_lambda.arn
     update_failed_status_lambda = module.update_failed_status_lambda.arn
+    wait_seconds                = var.sfn_wait_seconds
   })
 
   lifecycle {

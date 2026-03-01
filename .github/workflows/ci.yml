@@ -37,6 +37,9 @@ jobs:
       - name: Terraform Format Check
         run: terraform -chdir=terraform fmt -check -recursive
 
+      - name: Checkov IaC Security Scan
+        run: checkov -d terraform/ --check MEDIUM,HIGH,CRITICAL
+
       - name: Terraform Validate
         run: |
           terraform -chdir=terraform init -backend=false

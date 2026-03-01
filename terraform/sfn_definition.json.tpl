@@ -64,7 +64,7 @@
     },
     "Wait5Minutes": {
       "Type": "Wait",
-      "Seconds": 300,
+      "Seconds": ${wait_seconds},
       "Next": "CheckAccountStatus"
     },
     "UpdateStatusSuccess": {

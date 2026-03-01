@@ -46,10 +46,10 @@ resource "aws_lambda_event_source_mapping" "ddb_to_sfn" {
 
 module "accounts_api_lambda" {
   source                         = "./modules/lambda"
-  function_name                  = "${local.prefix}-api-lambda"
+  function_name                  = local.accounts_api_lambda_name
   role_arn                       = aws_iam_role.lambda_validation_role.arn
   handler                        = "lambda_function.lambda_handler"
-  runtime                        = "python3.11"
+  runtime                        = var.lambda_runtime_default
   source_dir                     = "${local.lambda_src_path}/api"
   output_path                    = "${local.lambda_src_path}/artfacts/api-lambda.zip"
   tags                           = local.default_tags
