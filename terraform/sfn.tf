@@ -120,6 +120,7 @@ resource "aws_iam_role_policy" "lambda_validation_policy" {
         Action = [
           "dynamodb:GetItem",
           "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
           "dynamodb:Scan",
           "dynamodb:Query"
         ]
@@ -130,7 +131,9 @@ resource "aws_iam_role_policy" "lambda_validation_policy" {
         Action = [
           "organizations:ListRoots",
           "organizations:ListOrganizationalUnitsForParent",
-          "organizations:ListAccounts"
+          "organizations:ListAccounts",
+          "organizations:ListParents",
+          "organizations:ListTagsForResource"
         ]
         Effect   = "Allow"
         Resource = "*"
@@ -220,29 +223,31 @@ resource "aws_iam_role_policy" "lambda_ddb_sfn_policy" {
 
 
 module "validate_lambda" {
-  source        = "./modules/lambda"
-  function_name = "Validate_fieldsLambda"
-  role_arn      = aws_iam_role.lambda_validation_role.arn
-  handler       = "validate_fields.lambda_handler"
-  runtime       = "python3.11"
-  source_file   = "${local.lambda_src_path}/accounts/validate_fields.py"
-  output_path   = "${local.lambda_src_path}/artfacts/validate_fields.zip"
-  tags          = local.default_tags
+  source                         = "./modules/lambda"
+  function_name                  = "Validate_fieldsLambda"
+  role_arn                       = aws_iam_role.lambda_validation_role.arn
+  handler                        = "validate_fields.lambda_handler"
+  runtime                        = "python3.11"
+  source_file                    = "${local.lambda_src_path}/accounts/validate_fields.py"
+  output_path                    = "${local.lambda_src_path}/artfacts/validate_fields.zip"
+  tags                           = local.default_tags
+  reserved_concurrent_executions = var.lambda_reserved_concurrency
   environment = {
     DYNAMO_TABLE = aws_dynamodb_table.accounts.name
   }
 }
 
 module "provision_account_lambda" {
-  source        = "./modules/lambda"
-  function_name = "ProvisionAccountLambda"
-  role_arn      = aws_iam_role.lambda_provisioning_role.arn
-  handler       = "provision_account.lambda_handler"
-  runtime       = "python3.11"
-  timeout       = 600
-  source_file   = "${local.lambda_src_path}/accounts/provision_account.py"
-  output_path   = "${local.lambda_src_path}/artfacts/provision_account.zip"
-  tags          = local.default_tags
+  source                         = "./modules/lambda"
+  function_name                  = "ProvisionAccountLambda"
+  role_arn                       = aws_iam_role.lambda_provisioning_role.arn
+  handler                        = "provision_account.lambda_handler"
+  runtime                        = "python3.11"
+  timeout                        = 600
+  source_file                    = "${local.lambda_src_path}/accounts/provision_account.py"
+  output_path                    = "${local.lambda_src_path}/artfacts/provision_account.zip"
+  tags                           = local.default_tags
+  reserved_concurrent_executions = var.lambda_reserved_concurrency
   environment = {
     DYNAMO_TABLE  = aws_dynamodb_table.accounts.name
     PRINCIPAL_ARN = aws_iam_role.lambda_provisioning_role.arn
@@ -250,78 +255,86 @@ module "provision_account_lambda" {
 }
 
 module "check_status_lambda" {
-  source        = "./modules/lambda"
-  function_name = "CheckAccountStatusLambda"
-  role_arn      = aws_iam_role.lambda_ddb_sfn_role.arn
-  handler       = "check_account_status.lambda_handler"
-  runtime       = "python3.11"
-  source_file   = "${local.lambda_src_path}/accounts/check_account_status.py"
-  output_path   = "${local.lambda_src_path}/artfacts/check_account_status.zip"
-  tags          = local.default_tags
+  source                         = "./modules/lambda"
+  function_name                  = "CheckAccountStatusLambda"
+  role_arn                       = aws_iam_role.lambda_ddb_sfn_role.arn
+  handler                        = "check_account_status.lambda_handler"
+  runtime                        = "python3.11"
+  source_file                    = "${local.lambda_src_path}/accounts/check_account_status.py"
+  output_path                    = "${local.lambda_src_path}/artfacts/check_account_status.zip"
+  tags                           = local.default_tags
+  reserved_concurrent_executions = var.lambda_reserved_concurrency
 }
 
 module "bootstrap_accounts_lambda" {
-  source        = "./modules/lambda"
-  function_name = "${local.prefix}-bootstrap-accounts"
-  role_arn      = aws_iam_role.lambda_validation_role.arn
-  handler       = "bootstrap_accounts.lambda_handler"
-  runtime       = "python3.11"
-  source_file   = "${local.lambda_src_path}/accounts/bootstrap_accounts.py"
-  output_path   = "${local.lambda_src_path}/artfacts/bootstrap_accounts.zip"
-  tags          = local.default_tags
+  source                         = "./modules/lambda"
+  function_name                  = "${local.prefix}-bootstrap-accounts"
+  role_arn                       = aws_iam_role.lambda_validation_role.arn
+  handler                        = "bootstrap_accounts.lambda_handler"
+  runtime                        = "python3.11"
+  timeout                        = 300
+  memory_size                    = 512
+  source_file                    = "${local.lambda_src_path}/accounts/bootstrap_accounts.py"
+  output_path                    = "${local.lambda_src_path}/artfacts/bootstrap_accounts.zip"
+  tags                           = local.default_tags
+  reserved_concurrent_executions = var.lambda_reserved_concurrency
   environment = {
     DYNAMO_TABLE = aws_dynamodb_table.accounts.name
   }
+  depends_on = [aws_iam_role_policy.lambda_validation_policy]
 }
 
-resource "aws_ssm_association" "bootstrap_weekly" {
-  name                = "AWS-InvokeLambdaFunction"
-  association_name    = "${local.prefix}-bootstrap-weekly"
-  schedule_expression = "cron(0 5 ? * MON *)"
-
-  parameters = {
-    FunctionName = [module.bootstrap_accounts_lambda.function_name]
-    Payload      = ["{}"]
+action "aws_lambda_invoke" "bootstrap_accounts_after_deploy" {
+  config {
+    function_name = module.bootstrap_accounts_lambda.function_name
+    payload = jsonencode({
+      source          = "terraform-apply"
+      mode            = "bootstrap"
+      fail_on_partial = false
+    })
   }
 }
 
 module "update_status_lambda" {
-  source        = "./modules/lambda"
-  function_name = "UpdateSucceedStatusLambda"
-  role_arn      = aws_iam_role.lambda_ddb_sfn_role.arn
-  handler       = "update_succeed_status.lambda_handler"
-  runtime       = "python3.11"
-  source_file   = "${local.lambda_src_path}/accounts/update_succeed_status.py"
-  output_path   = "${local.lambda_src_path}/artfacts/update_succeed_status.zip"
-  tags          = local.default_tags
+  source                         = "./modules/lambda"
+  function_name                  = "UpdateSucceedStatusLambda"
+  role_arn                       = aws_iam_role.lambda_ddb_sfn_role.arn
+  handler                        = "update_succeed_status.lambda_handler"
+  runtime                        = "python3.11"
+  source_file                    = "${local.lambda_src_path}/accounts/update_succeed_status.py"
+  output_path                    = "${local.lambda_src_path}/artfacts/update_succeed_status.zip"
+  tags                           = local.default_tags
+  reserved_concurrent_executions = var.lambda_reserved_concurrency
   environment = {
     DYNAMO_TABLE = aws_dynamodb_table.accounts.name
   }
 }
 
 module "update_failed_status_lambda" {
-  source        = "./modules/lambda"
-  function_name = "UpdateFailedStatusLambda"
-  role_arn      = aws_iam_role.lambda_ddb_sfn_role.arn
-  handler       = "update_failed_status.lambda_handler"
-  runtime       = "python3.11"
-  source_file   = "${local.lambda_src_path}/accounts/update_failed_status.py"
-  output_path   = "${local.lambda_src_path}/artfacts/update_failed_status.zip"
-  tags          = local.default_tags
+  source                         = "./modules/lambda"
+  function_name                  = "UpdateFailedStatusLambda"
+  role_arn                       = aws_iam_role.lambda_ddb_sfn_role.arn
+  handler                        = "update_failed_status.lambda_handler"
+  runtime                        = "python3.11"
+  source_file                    = "${local.lambda_src_path}/accounts/update_failed_status.py"
+  output_path                    = "${local.lambda_src_path}/artfacts/update_failed_status.zip"
+  tags                           = local.default_tags
+  reserved_concurrent_executions = var.lambda_reserved_concurrency
   environment = {
     DYNAMO_TABLE = aws_dynamodb_table.accounts.name
   }
 }
 
 module "trigger_lambda" {
-  source        = "./modules/lambda"
-  function_name = "TriggerSFNLambda"
-  role_arn      = aws_iam_role.lambda_ddb_sfn_role.arn
-  handler       = "trigger_sfn.lambda_handler"
-  runtime       = "python3.11"
-  source_file   = "${local.lambda_src_path}/accounts/trigger_sfn.py"
-  output_path   = "${local.lambda_src_path}/artfacts/trigger_sfn.zip"
-  tags          = local.default_tags
+  source                         = "./modules/lambda"
+  function_name                  = "TriggerSFNLambda"
+  role_arn                       = aws_iam_role.lambda_ddb_sfn_role.arn
+  handler                        = "trigger_sfn.lambda_handler"
+  runtime                        = "python3.11"
+  source_file                    = "${local.lambda_src_path}/accounts/trigger_sfn.py"
+  output_path                    = "${local.lambda_src_path}/artfacts/trigger_sfn.zip"
+  tags                           = local.default_tags
+  reserved_concurrent_executions = var.lambda_reserved_concurrency
   environment = {
     SFN_ARN = aws_sfn_state_machine.create_account_sfn.arn
   }
@@ -381,4 +394,11 @@ resource "aws_sfn_state_machine" "create_account_sfn" {
     update_status_lambda        = module.update_status_lambda.arn
     update_failed_status_lambda = module.update_failed_status_lambda.arn
   })
+
+  lifecycle {
+    action_trigger {
+      events  = [after_create, after_update]
+      actions = [action.aws_lambda_invoke.bootstrap_accounts_after_deploy]
+    }
+  }
 }

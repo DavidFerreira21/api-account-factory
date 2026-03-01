@@ -1,0 +1,15 @@
+aws_region = "us-east-1"
+
+# API Gateway
+# Publico: deixe api_gateway_vpc_id vazio e api_gateway_vpc_subnet_ids = []
+# Privado: informe vpc_id e subnets validas.
+api_gateway_vpc_id             = ""
+api_gateway_vpc_subnet_ids     = []
+api_gateway_vpc_allowed_cidrs  = ["0.0.0.0/0"]
+api_gateway_stage_name         = "prod"
+api_gateway_endpoint_type      = "REGIONAL"
+api_gateway_log_retention_days = 30
+
+# Step Functions / Lambda
+sfn_max_concurrent          = 5
+lambda_reserved_concurrency = null

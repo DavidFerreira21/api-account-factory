@@ -21,6 +21,13 @@ Thumbs.db
 terraform.tfstate
 terraform.tfstate.*
 .terraform.lock.hcl
+terraform/terraform.tfvars
+terraform/*.tfvars
+!terraform/*.tfvars.example
+terraform/bootstrap-output.json
+
+# Lambda packaging artifacts
+lambda_src/artfacts/*.zip
 
 # Local binaries / tools
 /.ruff_cache/

@@ -89,7 +89,9 @@ def test_bootstrap_lambda_updates_accounts(monkeypatch, reload_module):
 
     result = module.lambda_handler({}, None)
 
-    assert result == {"inserted": 1, "failed": 0}
+    assert result["inserted"] == 1
+    assert result["failed"] == 0
+    assert result["errors"] == []
     assert len(fake_table.calls) == 1
     assert fake_table.calls[0]["Key"]["AccountEmail"] == "dev@example.com"
 

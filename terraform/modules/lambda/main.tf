@@ -10,20 +10,21 @@ data "archive_file" "package" {
 }
 
 resource "aws_lambda_function" "this" {
-  function_name    = var.function_name
-  role             = var.role_arn
-  handler          = var.handler
-  runtime          = var.runtime
-  filename         = data.archive_file.package.output_path
-  source_code_hash = data.archive_file.package.output_base64sha256
-  description      = var.description
-  timeout          = var.timeout
-  memory_size      = var.memory_size
-  publish          = var.publish
-  layers           = var.layers
-  architectures    = var.architectures
-  tags             = var.tags
-  kms_key_arn      = var.kms_key_arn
+  function_name                  = var.function_name
+  role                           = var.role_arn
+  handler                        = var.handler
+  runtime                        = var.runtime
+  filename                       = data.archive_file.package.output_path
+  source_code_hash               = data.archive_file.package.output_base64sha256
+  description                    = var.description
+  timeout                        = var.timeout
+  memory_size                    = var.memory_size
+  publish                        = var.publish
+  layers                         = var.layers
+  architectures                  = var.architectures
+  tags                           = var.tags
+  kms_key_arn                    = var.kms_key_arn
+  reserved_concurrent_executions = var.reserved_concurrent_executions
 
   dynamic "environment" {
     for_each = local.has_environment ? [1] : []

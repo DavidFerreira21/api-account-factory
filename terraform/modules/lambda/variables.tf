@@ -77,6 +77,12 @@ variable "architectures" {
   default     = ["x86_64"]
 }
 
+variable "reserved_concurrent_executions" {
+  description = "Reserved concurrency limit for the Lambda function (null to leave unreserved, -1 to remove an existing limit)"
+  type        = number
+  default     = null
+}
+
 variable "tags" {
   description = "Tags applied to the Lambda"
   type        = map(string)

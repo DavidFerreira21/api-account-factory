@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from datetime import datetime, timezone
 
 import boto3
@@ -17,6 +18,39 @@ if not TABLE_NAME:
 TABLE = DDB.Table(TABLE_NAME)
 OU_CACHE = {}
 ROOT_NAME = ""
+MAX_IAM_PROPAGATION_RETRIES = 6
+MAX_REPORTED_ERRORS = 10
+
+
+def _to_bool(value, default=False):
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+    return bool(value)
+
+
+def _iter_accounts_pages():
+    paginator = ORG.get_paginator("list_accounts")
+    delay_seconds = 2
+    for attempt in range(1, MAX_IAM_PROPAGATION_RETRIES + 1):
+        try:
+            return paginator.paginate()
+        except ClientError as error:
+            code = error.response.get("Error", {}).get("Code")
+            if code != "AccessDeniedException" or attempt == MAX_IAM_PROPAGATION_RETRIES:
+                raise
+            LOGGER.warning(
+                "AccessDenied em organizations:ListAccounts (tentativa %s/%s). "
+                "Aguardando %ss para propagação IAM.",
+                attempt,
+                MAX_IAM_PROPAGATION_RETRIES,
+                delay_seconds,
+            )
+            time.sleep(delay_seconds)
+            delay_seconds *= 2
 
 
 def _iso_now() -> str:
@@ -85,22 +119,38 @@ def _normalize(account, ou_path):
 
 def _fetch_tags(account_id):
     try:
-        response = ORG.list_tags_for_resource(ResourceId=account_id)
-        return [
-            {"Key": tag["Key"], "Value": tag["Value"]}
-            for tag in response.get("Tags", [])
-        ]
+        paginator = ORG.get_paginator("list_tags_for_resource")
+        tags = []
+        for page in paginator.paginate(ResourceId=account_id):
+            tags.extend(
+                {"Key": tag["Key"], "Value": tag["Value"]}
+                for tag in page.get("Tags", [])
+            )
+        return tags
     except ClientError as error:
         LOGGER.warning("Não foi possível obter tags para %s: %s", account_id, error)
         return []
 
 
 def lambda_handler(event, context):
+    event = event or {}
     LOGGER.info("Iniciando bootstrap de contas do Organizations para %s", TABLE_NAME)
-    paginator = ORG.get_paginator("list_accounts")
     processed = 0
     failures = 0
-    for page in paginator.paginate():
+    failed_accounts = []
+    fail_on_partial = _to_bool(event.get("fail_on_partial"), default=False)
+    try:
+        account_pages = _iter_accounts_pages()
+    except ClientError as error:
+        code = error.response.get("Error", {}).get("Code", "Unknown")
+        raise RuntimeError(
+            "Falha ao listar contas no Organizations. "
+            "Verifique se a role da Lambda tem organizations:ListAccounts e se a conta "
+            "de execução pode consultar a Organization (management account/SCP). "
+            f"AWS ErrorCode={code}"
+        ) from error
+
+    for page in account_pages:
         for account in page.get("Accounts", []):
             path = _get_ou_path(account["Id"])
             item = _normalize(account, path)
@@ -111,7 +161,7 @@ def lambda_handler(event, context):
                     UpdateExpression=(
                         "SET AccountName = :name, "
                         "AccountId = :accId, "
-                        "Status = :status, "
+                        "#status = :status, "
                         "OrgUnit = :org, "
                         "SSOUserEmail = if_not_exists(SSOUserEmail, :ssoEmail), "
                         "SSOUserFirstName = if_not_exists(SSOUserFirstName, :ssoFirst), "
@@ -122,6 +172,9 @@ def lambda_handler(event, context):
                         "Tags = :tags, "
                         "CreatedAt = if_not_exists(CreatedAt, :created)"
                     ),
+                    ExpressionAttributeNames={
+                        "#status": "Status",
+                    },
                     ExpressionAttributeValues={
                         ":name": item["AccountName"],
                         ":accId": item["AccountId"],
@@ -140,6 +193,27 @@ def lambda_handler(event, context):
             except ClientError as error:
                 failures += 1
                 LOGGER.error("Falha ao gravar %s: %s", item["AccountEmail"], error)
+                if len(failed_accounts) < MAX_REPORTED_ERRORS:
+                    failed_accounts.append(
+                        {
+                            "account_email": item["AccountEmail"],
+                            "error_code": error.response.get("Error", {}).get(
+                                "Code", "Unknown"
+                            ),
+                            "message": error.response.get("Error", {}).get(
+                                "Message", str(error)
+                            ),
+                        }
+                    )
 
     LOGGER.info("Bootstrap finalizado. Gravados: %s, falhas: %s", processed, failures)
-    return {"inserted": processed, "failed": failures}
+    if failures > 0 and fail_on_partial:
+        raise RuntimeError(
+            f"Bootstrap finalizado com falhas. Gravados: {processed}, falhas: {failures}"
+        )
+    if failures > 0:
+        LOGGER.warning(
+            "Bootstrap com falhas parciais (modo nao bloqueante). Primeiros erros: %s",
+            failed_accounts,
+        )
+    return {"inserted": processed, "failed": failures, "errors": failed_accounts}

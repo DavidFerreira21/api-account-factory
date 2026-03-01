@@ -10,6 +10,10 @@ resource "aws_dynamodb_table" "accounts" {
     type = "S"
   }
 
+  server_side_encryption {
+    enabled = true
+  }
+
   # Habilita o Stream
   stream_enabled   = true
   stream_view_type = "NEW_IMAGE"
@@ -41,18 +45,19 @@ resource "aws_lambda_event_source_mapping" "ddb_to_sfn" {
 # ---------------- Lambda ----------------
 
 module "accounts_api_lambda" {
-  source        = "./modules/lambda"
-  function_name = "${local.prefix}-api-lambda"
-  role_arn      = aws_iam_role.lambda_validation_role.arn
-  handler       = "lambda_function.lambda_handler"
-  runtime       = "python3.11"
-  source_dir    = "${local.lambda_src_path}/api"
-  output_path   = "${local.lambda_src_path}/artfacts/api-lambda.zip"
-  tags          = local.default_tags
+  source                         = "./modules/lambda"
+  function_name                  = "${local.prefix}-api-lambda"
+  role_arn                       = aws_iam_role.lambda_validation_role.arn
+  handler                        = "lambda_function.lambda_handler"
+  runtime                        = "python3.11"
+  source_dir                     = "${local.lambda_src_path}/api"
+  output_path                    = "${local.lambda_src_path}/artfacts/api-lambda.zip"
+  tags                           = local.default_tags
+  reserved_concurrent_executions = var.lambda_reserved_concurrency
   environment = {
     DYNAMO_TABLE       = aws_dynamodb_table.accounts.name
     SFN_ARN            = aws_sfn_state_machine.create_account_sfn.arn
-    SFN_MAX_CONCURRENT = "5"
+    SFN_MAX_CONCURRENT = tostring(var.sfn_max_concurrent)
   }
 }
 
@@ -62,12 +67,12 @@ module "accounts_api_lambda" {
 module "accounts_api_gateway" {
   source                = "./modules/apigw"
   name_prefix           = local.prefix
-  stage_name            = "prod"
+  stage_name            = var.api_gateway_stage_name
   lambda_function_name  = module.accounts_api_lambda.function_name
   region                = var.aws_region
   openapi_template_path = "${path.module}/accounts-api.yaml.tpl"
-  log_retention_days    = 30
-  endpoint_type         = "REGIONAL"
+  log_retention_days    = var.api_gateway_log_retention_days
+  endpoint_type         = var.api_gateway_endpoint_type
   vpc_id                = var.api_gateway_vpc_id
   vpc_subnet_ids        = var.api_gateway_vpc_subnet_ids
   vpc_allowed_cidrs     = var.api_gateway_vpc_allowed_cidrs
@@ -77,4 +82,14 @@ module "accounts_api_gateway" {
 output "bootstrap_accounts_lambda_name" {
   description = "Nome da Lambda usada para carregar contas existentes do Organizations"
   value       = module.bootstrap_accounts_lambda.function_name
+}
+
+output "api_rest_api_id" {
+  description = "ID do API Gateway"
+  value       = module.accounts_api_gateway.rest_api_id
+}
+
+output "api_invoke_url" {
+  description = "URL base do API Gateway"
+  value       = module.accounts_api_gateway.invoke_url
 }
