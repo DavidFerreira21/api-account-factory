@@ -16,3 +16,4 @@ ruff check "${ROOT_DIR}/lambda_src" "${ROOT_DIR}/tests"
 
 echo "== Ruff Format (check mode) =="
 ruff format --check "${ROOT_DIR}/lambda_src" "${ROOT_DIR}/tests"
+
