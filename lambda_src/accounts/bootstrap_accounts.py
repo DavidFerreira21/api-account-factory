@@ -40,7 +40,10 @@ def _iter_accounts_pages():
             return paginator.paginate()
         except ClientError as error:
             code = error.response.get("Error", {}).get("Code")
-            if code != "AccessDeniedException" or attempt == MAX_IAM_PROPAGATION_RETRIES:
+            if (
+                code != "AccessDeniedException"
+                or attempt == MAX_IAM_PROPAGATION_RETRIES
+            ):
                 raise
             LOGGER.warning(
                 "AccessDenied em organizations:ListAccounts (tentativa %s/%s). "

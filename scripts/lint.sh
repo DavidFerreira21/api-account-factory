@@ -11,13 +11,8 @@ if ! command -v ruff >/dev/null; then
   exit 1
 fi
 
-if ! command -v black >/dev/null; then
-  echo "Black não encontrado. Instale com 'python3 -m pip install --user black' ou 'pip install -r requirements-dev.txt'." >&2
-  exit 1
-fi
-
 echo "== Ruff =="
 ruff check "${ROOT_DIR}/lambda_src" "${ROOT_DIR}/tests"
 
-echo "== Black (check mode) =="
-black --check "${ROOT_DIR}/lambda_src" "${ROOT_DIR}/tests"
+echo "== Ruff Format (check mode) =="
+ruff format --check "${ROOT_DIR}/lambda_src" "${ROOT_DIR}/tests"

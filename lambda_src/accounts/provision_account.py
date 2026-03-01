@@ -176,7 +176,6 @@ def lambda_handler(event, context):
             self.item = {"account_email": account_email or "desconhecido"}
 
     try:
-
         LOGGER.info(f"Event: {event}")
         item = event
 
